@@ -190,7 +190,7 @@ def fill_sped_nulls(df, sped_type, dicionario = {}):
     df = df.with_columns(pl.col(dfn.PERIODO).forward_fill())
     df = df.with_columns(pl.col(dfn.CNPJ).forward_fill())
     df = df.with_columns(pl.col(dfn.PERIODO).map_elements(lambda x: find_date(x), return_dtype=pl.Utf8))
-    df = df.with_columns(pl.col(dfn.PERIODO).str.strptime(pl.Date, format='%Y-%m-%d'))
+    df = df.with_columns(pl.col(dfn.PERIODO).str.strptime(pl.Date, format='%Y-%m-%d', strict=False))
     
     if sped_type[dfn.OBRIGACAO] == dfn.ECD[dfn.OBRIGACAO]:
         df = df.with_columns(pl.col(dfn.ID_SPED).map_elements(lambda x: apply_versao(x, dicionario), return_dtype=pl.Utf8).alias(dfn.VERSAO))

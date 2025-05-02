@@ -95,21 +95,7 @@ def extract_id(row, flag, special_identifier, key):
         return 0
 
 
-file = fd.FILE_NAME
-
-def is_Fiscal(file):
-    if file is not None and file.startswith('EFD F'):
-        return True
-    return False   
-
-
-def is_Contribuicoes(file):
-    if file is not None and file.startswith('EFD C'):
-        
-        return True
-    else:
-        return False
-    
+file = fd.FILE_NAME   
     
 def is_NFe(file):
     if file is not None and file.startswith('Conversor'):
