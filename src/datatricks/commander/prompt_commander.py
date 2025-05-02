@@ -227,13 +227,8 @@ class Commander:
                     + commander_definitions.TEMPLATE_DIR_NAME
                 )
             )
-            raise ValueError(
-                "Template path not found: {}".format(
-                    self.global_params["execution"]
-                    + os.sep
-                    + commander_definitions.TEMPLATE_DIR_NAME
-                )
-            )
+            self.global_params["template_path"] = None
+
 
     def get_assets_path(self):
         if os.path.exists(
@@ -261,6 +256,8 @@ class Commander:
 
     def get_template_files(self):
         logging.debug("Getting template files")
+        if self.global_params["template_path"] is None:
+            raise ValueError("No template path found")
         return get_simple_files(self.global_params["template_path"])
 
     def get_assets_files(self):
@@ -271,22 +268,25 @@ class Commander:
         return get_simple_files(self.global_params["asset_path"])
 
     def prepare_templates(self):
-        logging.debug("Moving template files")
-        resp = []
-        f_idx = 1
-        for file in self.get_template_files():
-            resp.append(
-                prepare_output_template(
-                    template_path=file,
-                    output_path=self.global_params["output"],
-                    project_name=self.global_params["output_file_mask_name"].format(
-                        self.global_params["name"] + "_" + str(f_idx)
+        if self.global_params["template_path"] is None:
+            self.global_params["template_files"] = None
+        else:
+            logging.debug("Moving template files")
+            resp = []
+            f_idx = 1
+            for file in self.get_template_files():
+                resp.append(
+                    prepare_output_template(
+                        template_path=file,
+                        output_path=self.global_params["output"],
+                        project_name=self.global_params["output_file_mask_name"].format(
+                            self.global_params["name"] + "_" + str(f_idx)
+                        )
                     )
                 )
-            )
-            f_idx += 1
-            
-        self.global_params["template_files"] = resp
+                f_idx += 1
+                
+            self.global_params["template_files"] = resp
 
     def prepare_logger(self):
         self.logger.setLevel(logging.DEBUG)

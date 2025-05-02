@@ -109,7 +109,6 @@ def get_file_type(fullPath):
 
 def get_simple_files(path):
     resp = []
-    print(path)
     for root, _, filenames in os.walk(path):
         for filename in filenames:
             resp.append(str(os.path.join(root, filename)))

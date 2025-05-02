@@ -93,12 +93,3 @@ def extract_id(row, flag, special_identifier, key):
         return 0
     else:
         return 0
-
-
-file = fd.FILE_NAME   
-    
-def is_NFe(file):
-    if file is not None and file.startswith('Conversor'):
-        return True
-    else:
-        return False

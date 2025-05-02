@@ -3,10 +3,11 @@ from datatricks.commander.prompt_commander import Commander
 import datatricks.sped.content as sp
 import datatricks.io.file_helper as fh
 import datatricks.sped.sped_definitions as dfn
-import datatricks.sped.conversor as cv
+import datatricks.sped.conversor_sped as cv
+import datatricks.sped.conversor_xml as cx
 import datatricks.io.excel_handler as eh
 import datatricks.io.file_definitions as fd
-from datatricks.sped.file_identifier import is_NFe
+import datatricks.sped.file_identifier as fi
 import shutil
 from pathlib import Path
 import openpyxl
@@ -84,7 +85,6 @@ class Sped_cruzamento(Commander):
         df_efdf_transpose = df_efdf_transpose.rename({'REG': 'Registro'})
 
         df_asset_contrib = cv.read_assets(assets_path, dfn.EFDC)
-       
         if inbound is not None and not inbound.filter(pl.col(fd.IS_EFDC)).is_empty():
             df_efdc = inbound.filter(pl.col(fd.IS_EFDC).map_elements(lambda x: x, return_dtype=pl.Boolean))
             df_contribuicoes = cv.quebra(df_efdc, df_asset_contrib, dfn.EFDC)
@@ -112,41 +112,16 @@ class Sped_cruzamento(Commander):
         else:
             df_fiscal = df_efdf_transpose 
         
+
+        df_xml = inbound.filter(pl.col(fd.IS_NFE).map_elements(lambda x: x, return_dtype=pl.Boolean))
+        df_Nfe = cx.conversor_xml(df_xml, field_list=[])
+        print(df_Nfe)
+        inbound.write_csv('inbound.csv')
         
         df_asset = pl.read_excel(
             source = "src\\assets\\Situacao_NF-e.xlsx",
             engine = "openpyxl")
         
-        caminhoNFe = (inbound.filter(pl.col(fd.FILE_NAME).map_elements(lambda x: is_NFe(x), return_dtype=pl.Boolean))
-        .select(fd.FULL_PATH)       
-        .item(0, 0))
-
-        dataframeNFe = pl.read_excel(
-            source = caminhoNFe,
-            engine = "openpyxl",
-            sheet_name = 'NFe'
-        ) 
-        
-        FileName = dataframeNFe.with_columns([
-            pl.col("file_path").map_elements(lambda x: Path(x).name, return_dtype=pl.String).alias("FileName")
-        ])
-
-        dataframeNFe = dataframeNFe.rename({
-            'infNFe_ide_dhEmi': 'Período',
-            'NFe_infNFe_Id': 'Id',
-            'infNFe_emit_CNPJ': 'CNPJ_EMIT',
-            'infNFe_dest_CNPJ': 'CNPJ_DEST',
-            'protNFe_infProt_xMotivo':'xMotivo',
-            'det_prod_CFOP':'CFOP',
-            'protNFe_infProt_chNFe':'CHV_NFE'})
-        
-        
-        NFe = dataframeNFe.unique(subset=["CHV_NFE"], keep="first")
-
-  
-        NFe = NFe.drop_nulls(subset=["CHV_NFE"])
-        NFe = dataframeNFe.select(['Período', 'CHV_NFE', 'xMotivo', 'Id', 'CFOP', 'CNPJ_EMIT','CNPJ_DEST'])
-        NFe = NFe.with_columns(pl.col("Período").str.to_datetime().cast(pl.Date), pl.col("CFOP").cast(pl.Int32))
 
         Contribuicoes = (df_contribuicoes.select(['Registro', 'COD_SIT', 'CHV_NFE', 'Período'])).filter(pl.col("Registro") == 'C100')
         Contribuicoes = Contribuicoes.unique(subset=["CHV_NFE"], keep="first")
@@ -156,48 +131,48 @@ class Sped_cruzamento(Commander):
        
         PeriodoNotas = pl.concat([
             df_contribuicoes.select(['CHV_NFE', 'Período']),
-            df_fiscal.select(['CHV_NFE', 'Período']),
-            NFe.select(['CHV_NFE', 'Período'])
+            df_fiscal.select(['CHV_NFE', 'Período'])
+            # NFe.select(['CHV_NFE', 'Período'])
         ])
         PeriodoNotas.unique(subset=["CHV_NFE"], keep="first")
 
         
         empresaCNPJ =  pl.concat([
             df_contribuicoes.select(['NOME', 'CNPJ']),
-            df_contribuicoes.select(['NOME', 'CNPJ'])
+            df_fiscal.select(['NOME', 'CNPJ'])
         ])
         empresaCNPJ = empresaCNPJ.unique(subset=["CNPJ"], keep="first")
         empresaNome = (empresaCNPJ.select(['NOME']).item(0,0))
         cnpj = (empresaCNPJ.select(["CNPJ"]).item(0,0))
 
 
-        tratamento = (NFe.with_columns([
-            pl.when(pl.col("CNPJ_DEST") == cnpj)
-                .then(pl.lit("Emissão Terceiros - Entrada"))
-            .when((pl.col("CNPJ_EMIT") == cnpj)  & (pl.col("CFOP")<4000))
-                .then(pl.lit("Emissão Própria - Entrada")) 
-            .when((pl.col("CNPJ_EMIT") == cnpj) & (pl.col("CFOP")>4000))
-                .then(pl.lit("Emissão Própria - Saída"))
-            .otherwise (pl.lit("Terceiros - Sem Vínculo"))
-            .alias("Tipo")  
-        ])
-        .select(['Período', 'CHV_NFE', 'xMotivo', 'Id', 'CFOP', 'CNPJ_EMIT','CNPJ_DEST', 'Tipo']))
+        # tratamento = (NFe.with_columns([
+        #     pl.when(pl.col("CNPJ_DEST") == cnpj)
+        #         .then(pl.lit("Emissão Terceiros - Entrada"))
+        #     .when((pl.col("CNPJ_EMIT") == cnpj)  & (pl.col("CFOP")<4000))
+        #         .then(pl.lit("Emissão Própria - Entrada")) 
+        #     .when((pl.col("CNPJ_EMIT") == cnpj) & (pl.col("CFOP")>4000))
+        #         .then(pl.lit("Emissão Própria - Saída"))
+        #     .otherwise (pl.lit("Terceiros - Sem Vínculo"))
+        #     .alias("Tipo")  
+        # ])
+        # .select(['Período', 'CHV_NFE', 'xMotivo', 'Id', 'CFOP', 'CNPJ_EMIT','CNPJ_DEST', 'Tipo']))
 
         Contribuicoes = Contribuicoes.with_columns(
         pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
         Fiscal = Fiscal.with_columns(
         pl.lit("SIM").alias("EFD ICMS IPI"))
-        NFe = NFe.with_columns(
-        pl.lit("SIM").alias("NFE"))
+        # NFe = NFe.with_columns(
+        # pl.lit("SIM").alias("NFE"))
 
-        verificação = pl.concat([
-            Contribuicoes.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
-            Fiscal.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
-            NFe.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("NFE"), pl.col("xMotivo").alias("SITUAÇÃO NFE")),
-            tratamento.select( pl.col("Tipo"))
-            ],  how="diagonal")
+        # verificação = pl.concat([
+        #     Contribuicoes.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
+        #     Fiscal.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
+        #     NFe.select(pl.col("CHV_NFE"),pl.col("Período"), pl.col("NFE"), pl.col("xMotivo").alias("SITUAÇÃO NFE")),
+        #     tratamento.select( pl.col("Tipo"))
+        #     ],  how="diagonal")
         
-        verificação = verificação.unique(subset=["CHV_NFE"], keep="first")
+        # verificação = verificação.unique(subset=["CHV_NFE"], keep="first")
 
         situacaoContribuicao  = df_asset.rename({
             "Código" : "COD_SIT_EFDC",
@@ -208,16 +183,16 @@ class Sped_cruzamento(Commander):
             "Descrição " : "DESC_COD_SIT_EFDF"
         })
 
-        situacao = verificação.join(situacaoContribuicao, on="COD_SIT_EFDC", how="left")
-        situacao = situacao.join(situacaoFiscal, on="COD_SIT_EFDF", how="left")
-        situacao = situacao.select(pl.col("CHV_NFE"),pl.col("Período").alias("PERÍODO"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT_EFDC"),pl.col("DESC_COD_SIT_EFDC"), pl.col("EFD ICMS IPI") ,pl.col("COD_SIT_EFDF"), pl.col("DESC_COD_SIT_EFDF"), pl.col("NFE"), pl.col("SITUAÇÃO NFE"), pl.col("Tipo").alias("EMISSÃO") )
+        # situacao = verificação.join(situacaoContribuicao, on="COD_SIT_EFDC", how="left")
+        # situacao = situacao.join(situacaoFiscal, on="COD_SIT_EFDF", how="left")
+        # situacao = situacao.select(pl.col("CHV_NFE"),pl.col("Período").alias("PERÍODO"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT_EFDC"),pl.col("DESC_COD_SIT_EFDC"), pl.col("EFD ICMS IPI") ,pl.col("COD_SIT_EFDF"), pl.col("DESC_COD_SIT_EFDF"), pl.col("NFE"), pl.col("SITUAÇÃO NFE"), pl.col("Tipo").alias("EMISSÃO") )
 
 
 
 
 if __name__ == "__main__":
-    if os.path.exists(r'C:\Projetos\projetos\Dados\nfeExcel\output'):
-        shutil.rmtree(r'C:\Projetos\projetos\Dados\nfeExcel\output')
+    if os.path.exists(r'C:\Users\Apter\Documents\Projetos\projetos\Dados\base_cruzamentos\output'):
+        shutil.rmtree(r'C:\Users\Apter\Documents\Projetos\projetos\Dados\base_cruzamentos\output')
     cmd = Sped_cruzamento(app = 'Sped Cruzamento', path=os.path.abspath(__file__), args=sys.argv)
     cmd.process()
     del(cmd)

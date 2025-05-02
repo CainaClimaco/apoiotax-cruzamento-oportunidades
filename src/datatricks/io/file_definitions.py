@@ -17,7 +17,7 @@ IS_PDF = 'is_PDF'
 IS_DUPLICATED = "is_duplicated"
 FULL_PATH = 'full_Path'
 FILE_NAME = 'file_Name'
-
+XML_CONTENT = 'Xml_Content'
 
 ## Polars columns index used to compose the full files dataframe !
 
