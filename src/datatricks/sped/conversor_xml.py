@@ -22,11 +22,16 @@ def flatten(input_dict, separator='_', prefix=''):
                             output_dict.update({str(key2).replace("@", ""): val2 for key2, val2 in deeper.items()})
 
                         else:
-                            output_dict[str(prefix+key+separator+str(index)).replace("@", "")] = value
+                            if value != None:
+                                output_dict[str(prefix+key+separator+str(index)).replace("@", "")] = value.replace("'", "")
+                            else:
+                                output_dict[str(prefix+key+separator+str(index)).replace("@", "")] = value
 
                 else:
-                    output_dict[str(prefix+key).replace("@", "")] = value
-
+                    if value != None:
+                        output_dict[str(prefix+key).replace("@", "")] = value.replace("'", "")
+                    else:
+                        output_dict[str(prefix+key).replace("@", "")] = value
             return output_dict
 
 def open_xml_file(full_Path, file_Encoding):
@@ -47,7 +52,7 @@ def find_key(str_content, keys):
           return dict_xml
     for key in keys:
         try: 
-            content[key] = dict_xml[key]
+            content[key] = dict_xml.get(key)
         except:
             content[key] = None
     return content 

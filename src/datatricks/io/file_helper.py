@@ -117,9 +117,12 @@ def get_simple_files(path):
 def assert_file_encoding(path, encoding):
 
     default_file_encoding = 'latin-1'
-    allowed_exts = ["xml", "txt", "json"]
+    allowed_exts = ["txt", "json"]
     extension = path.split('.')[-1]
     path = os.path.normpath(os.fsdecode(path))
+
+    if extension in 'xml':
+        return 'utf-8-sig'
 
     if extension not in allowed_exts:
         return None

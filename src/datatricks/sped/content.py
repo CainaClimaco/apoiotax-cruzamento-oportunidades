@@ -25,7 +25,7 @@ def read_file(full_path, encoding='latin1', end_of_file_id="9999"):
     except UnicodeDecodeError:
         temp_list = basic_file_read(full_path, "latin1", end_of_file_id, temp_list)
 
-    return pl.DataFrame(temp_list, schema={'consolidado':pl.Utf8, 'file':pl.String})
+    return pl.DataFrame(temp_list, schema={'consolidado':pl.Utf8, 'file':pl.String}, orient="row")
 
 
 def basic_file_read(full_path, encoding, end_of_file_id, temp_list):

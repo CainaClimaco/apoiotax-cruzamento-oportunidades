@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Projetos\\projetos\\Dados\\nfe-fiscal", "-n", "EFD Contribuicoes", "-s", "{'Tipo':'EFD Contribuicoes'}"
+                "-i", "C:\\Users\\Apter\\Documents\\Projetos\\projetos\\Dados\\base_cruzamentos", "-n", "EFD Contribuicoes", "-s", "{'Tipo':'EFD Contribuicoes'}"
             ]
         }
     ]
