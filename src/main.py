@@ -24,12 +24,11 @@ class Sped_cruzamento(Commander):
         df_fiscal = cr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.CAMINHO_EFDF, cd.VERSAO_EFDF, assets_path, cd.PADRAO_EFDF, cd.EFDF)
         df_nfe = cr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE)
 
-        Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])).filter(pl.col("Registro") == 'C100')
-        Contribuicoes = Contribuicoes.unique(subset=[cd.CHV_NFE], keep="first")
-        Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])).filter(pl.col("Registro") == 'C100')
-        Fiscal = Fiscal.unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
+        Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
+                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first")
+        Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
+                  ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
         NFe = df_nfe.unique(subset=[cd.ID], keep="first")
-
 
         PeriodoNotas = pl.concat([
             Contribuicoes.select([cd.CHV_NFE, 'Período']),
@@ -38,7 +37,7 @@ class Sped_cruzamento(Commander):
         ])
         PeriodoNotas.unique(subset=[cd.CHV_NFE], keep="first")
 
-        if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()) and (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()):
+        if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty() & (pl.col(fd.IS_EFDC)).is_empty()):
             empresaNome = ""
             cnpj = ""
         else:
@@ -50,13 +49,9 @@ class Sped_cruzamento(Commander):
             cnpj = (empresaCNPJ.select([cd.CNPJ]).item(0,0))
 
 
-        Contribuicoes = Contribuicoes.with_columns(
-        pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
-        Fiscal = Fiscal.with_columns(
-        pl.lit("SIM").alias("EFD ICMS IPI"))
-        NFe = NFe.with_columns(
-        pl.lit("SIM").alias("NFE"))
-
+        Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
+        Fiscal = Fiscal.with_columns(pl.lit("SIM").alias("EFD ICMS IPI"))
+        NFe = NFe.with_columns(pl.lit("SIM").alias("NFE"))
 
         tratamento = NFe.with_columns([
             pl.when(cd.CNPJ_DEST == cnpj)
@@ -81,7 +76,6 @@ class Sped_cruzamento(Commander):
         df_situacao = pl.read_excel(
             source = cd.CAMINHO_SITUACAO,
             engine = "openpyxl")
-
 
         situacao = verificacao.join(df_situacao, left_on="COD_SIT_EFDC", right_on="Código", how="left"
                                     ).join(df_situacao, left_on="COD_SIT_EFDF", right_on="Código", how="left", suffix="_efdf")
