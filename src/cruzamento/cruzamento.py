@@ -32,7 +32,7 @@ def leitor_sped(inbound, obrigacao, sped_type, caminho, versao, path, padrao, de
 def leitor_nfe(inbound, obrigacao, definition):
     if inbound.filter(pl.col(obrigacao)).is_empty():
         NFe = pl.DataFrame({
-            'file_name': None,
+            'file_Name': None,
             'Período': None ,
             'ID': None,
             'CNPJ_EMIT':None,

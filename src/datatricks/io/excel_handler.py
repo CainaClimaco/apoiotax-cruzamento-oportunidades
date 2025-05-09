@@ -23,6 +23,7 @@ def dump_data_to_sheet(
     if write_header:
         for index, col in enumerate(data.columns, start=start_col):
             sheet.cell(row=start_row, column=index).value = col
+        start_row += 1
     index = 0
     for row in data.iter_rows(named=True):
         for col_index, col in enumerate(data.columns, start=start_col):

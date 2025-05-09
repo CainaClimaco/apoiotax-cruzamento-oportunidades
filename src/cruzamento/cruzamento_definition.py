@@ -14,6 +14,9 @@ DESC_COD_SIT_EFDC = "Descrição"
 COD_SIT_EFDF = "COD_SIT_EFDF"
 DESC_COD_SIT_EFDF = "DESC_COD_SIT_EFDF"
 Registro = 'Registro'
+file_name = "NOME DO ARQUIVO"
+processamento = "PROCESSAMENTO"
+status = "STATUS ARQUIVO"
 
 
 VERSAO_EFDC = '006' 
@@ -23,6 +26,7 @@ CAMINHO_EFDF = 'src\\assets\\Registros EFD ICMS IPI.xlsx'
 CAMINHO_SITUACAO = 'src\\assets\\Situacao_NF-e.xlsx'
 status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
+status_nfe = "Nota fiscal eletrônica (NF-e) duplicada"
 
 
 EFDC = {NOME: 'field_7',
