@@ -3,7 +3,7 @@ CNPJ = 'CNPJ'
 COD_SIT = 'COD_SIT'
 CHV_NFE = 'CHV_NFE'
 VERSAO = 'VERSAO' 
-Período = 'Período'
+PERÍODO = 'Período'
 ID = 'ID'
 CNPJ_EMIT = 'CNPJ_EMIT'
 CNPJ_DEST = 'CNPJ_DEST'
@@ -48,7 +48,7 @@ PADRAO_EFDF = {
         Registro: 'REG'
 }
 
-NFE = { Período: 'nfeProc_NFe_infNFe_ide_dhEmi',
+NFE = { PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
         ID: 'nfeProc_NFe_infNFe_Id',
         CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
         CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',

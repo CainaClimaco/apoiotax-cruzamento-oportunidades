@@ -52,7 +52,7 @@ def leitor_nfe(inbound, obrigacao, definition):
                                                     'nfeProc_protNFe_infProt_chNFe'])
         NFe = renomear_colunas(NFe, definition)
         NFe = NFe.with_columns(
-            pl.col(cd.Período).str.slice(0,10).str.strptime(pl.Date, strict=False),
+            pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
             pl.col(cd.CFOP).cast(pl.Int32))
     return NFe
  

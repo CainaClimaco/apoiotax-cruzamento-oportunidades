@@ -32,10 +32,11 @@ class Sped_cruzamento(Commander):
         nfe_duplicada = an.nfe_duplicada(df_nfe, cd.ID)
 
         analise = pl.concat([xml, txt, nfe_duplicada, erro], how="diagonal")
-        analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO')
+        analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
 
+        # Cruzamento
         Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first")
+                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
         Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
                   ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
         NFe = df_nfe.unique(subset=[cd.ID], keep="first")
@@ -43,7 +44,7 @@ class Sped_cruzamento(Commander):
         PeriodoNotas = pl.concat([
             Contribuicoes.select([cd.CHV_NFE, 'Período']),
             Fiscal.select([cd.CHV_NFE, 'Período']),
-            NFe.select([cd.CHV_NFE,cd.Período])
+            NFe.select([cd.CHV_NFE,cd.PERÍODO])
         ])
         PeriodoNotas.unique(subset=[cd.CHV_NFE], keep="first")
 
@@ -61,6 +62,7 @@ class Sped_cruzamento(Commander):
         Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
         Fiscal = Fiscal.with_columns(pl.lit("SIM").alias("EFD ICMS IPI"))
         NFe = NFe.with_columns(pl.lit("SIM").alias("NFE"))
+       
         tratamento = NFe.with_columns([
             pl.when(cd.CNPJ_DEST == cnpj)
                 .then(pl.lit("Emissão Terceiros - Entrada"))
@@ -75,7 +77,7 @@ class Sped_cruzamento(Commander):
         verificacao = pl.concat([
             Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
             Fiscal.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
-            tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.Período), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
+            tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
             ], how="diagonal")
         
         verificacao = verificacao.unique(subset=[cd.CHV_NFE], keep="first")
@@ -96,8 +98,9 @@ class Sped_cruzamento(Commander):
                                    pl.col("COD_SIT_EFDF"), 
                                    pl.col("Descrição _efdf").alias("DESC_COD_SIT_EFDF"), 
                                    pl.col("NFE"), 
-                                   pl.col("SITUAÇÃO NFE"), 
-                                   pl.col("EMISSÃO"))
+                                   pl.col("EMISSÃO"),
+                                   pl.col("SITUAÇÃO NFE"))
+                                   
         cruzamento = cruzamento.sort(cd.CHV_NFE, 'PERÍODO' ).filter(pl.col(cd.CHV_NFE).is_not_null())
         print(cruzamento)
         
