@@ -1,7 +1,8 @@
 import polars as pl
+import datatricks.sped.conversor_sped as cs
 import cruzamento.cruzamento_definition as cf
 
-def sped_padrao(caminho, versao):
+def sped_padrao(sped_type, versao):
     """
     Description:
         Lê um arquivo Excel com o layout padrão do SPED e transforma em um Dataframe.
@@ -11,11 +12,7 @@ def sped_padrao(caminho, versao):
     Returns:
         Dataframe com a estrutura base do SPED, transposto. 
     """
-
-    df_padrao = pl.read_excel(
-        source = caminho,
-        engine = "openpyxl"
-        ).filter(
+    df_padrao = (cs.get_remote_assets(sped_type)).filter(
             ((pl.col("Registro") == 'C100') & (pl.col("Versao") == versao)) | 
             ((pl.col("Registro") == '0000') & (pl.col("Versao") == versao))
         ) 

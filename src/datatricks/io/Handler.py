@@ -29,7 +29,7 @@ def flatten(input_dict, separator="_", prefix=""):
     return output_dict
 
 
-def is_odd_file(data):
+def is_odd_file(data, file_types):
     field_name = next(iter(data))
     if field_name.split("_")[0] in file_types:
         return True
@@ -66,7 +66,7 @@ def build_column_name(lst, start_index):
 def count_repeated_fields(details_dict):
     det_list = []
     rastro_list = []
-    for key, value in details.items():
+    for key, value in details_dict.items():
         if isinstance(key, tuple):
             if len(key) == 3:
                 if key[1] not in det_list:

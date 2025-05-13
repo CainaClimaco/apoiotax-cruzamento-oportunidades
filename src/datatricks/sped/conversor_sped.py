@@ -1,6 +1,8 @@
 import polars as pl
+import requests
 import datatricks.sped.sped_definitions as dfn
 import datatricks.sped.content as ct
+import datatricks.cloud.azure_key_vault as akv
 from datatricks.sped.cache import cache
 
 def hierarquizacao(df, level, row):
@@ -320,13 +322,27 @@ def read_assets(assets_path, sped_type):
     return pl.read_excel(assets_path[sped_type[dfn.ASSET]], schema_overrides=dtypes)
 
 
-def quebra(inbound, df_asset, sped_type):
+def quebra(inbound, sped_type):
+    df_assets = get_remote_assets(sped_type)
     df_sped = ct.read_sped_files(inbound)
     df_sped = df_sped.rename({'id_file':dfn.ID_SPED})
-    df = dataframe_treatment(df_sped, df_asset, sped_type)
+    df = dataframe_treatment(df_sped, df_assets, sped_type)
     df = hierarquizacao(df, 5, 0)
     df = consolidado(df, 5, 1)
     df = split(df, 'texto_consolidado', "|")
     df = remove_equals(df)
     df = df_treatment_pre_file_generation(df, sped_type)
     return df
+
+def get_remote_assets(sped_type):
+
+    url = dfn.URL_API
+    try:
+        response = requests.post(url, json = {"code":akv.get_secrets(dfn.API_KEY_SECRET, dfn.URL_KV_ASSETS), "table":sped_type.get(dfn.OBRIGACAO)}, headers = {"Content-Type": "application/json"})
+        response.raise_for_status()  
+        data = response.json()  
+        df = pl.DataFrame(data)
+        return df
+
+    except Exception as e:
+        raise Exception(f"Erro na requisição: {e}")

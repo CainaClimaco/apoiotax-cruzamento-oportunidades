@@ -19,10 +19,9 @@ class Sped_cruzamento(Commander):
         self.logger.info("Starting application.")
         inbound = self.get_incomming_files()
         inbound = fh.get_sped_filters(inbound)
-        assets_path = self.get_assets_files() 
 
-        df_contribuicoes = cr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.CAMINHO_EFDC, cd.VERSAO_EFDC, assets_path, cd.PADRAO_EFDC, cd.EFDC)
-        df_fiscal = cr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.CAMINHO_EFDF, cd.VERSAO_EFDF, assets_path, cd.PADRAO_EFDF, cd.EFDF)
+        df_contribuicoes = cr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.VERSAO_EFDC, cd.PADRAO_EFDC, cd.EFDC)
+        df_fiscal = cr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.VERSAO_EFDF, cd.PADRAO_EFDF, cd.EFDF)
         df_nfe = cr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE)
 
         # Análise: Tratativa para arquivos não processados

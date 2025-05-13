@@ -19,6 +19,9 @@ OBRIGACAO = 'Obrigacao'
 LIMITE = 1000000
 REASON = 'Motivo'
 TAG_TEMPLATE = 'Tag Template'
+URL_KV_ASSETS = r'https://datatricks.vault.azure.net' 
+URL_API = r'https://sped-assets.azurewebsites.net/api/sped_assets'
+API_KEY_SECRET = 'sped-assets-code'
 
 ECF = {REGISTROS: ['0000', '0001', '0010', '0020', '0021', '0030', '0035', '0930', '0990',
                    'C001', 'C040', 'C050', 'C051', 'C053', 'C100', 'C150', 'C155', 'C157',
@@ -80,7 +83,7 @@ EFDC = {REGISTROS: ['0000', '0001', '0035', '0100', '0110', '0111', '0120', '014
         VERSAO: 'field_1',
         COMPANY_NAME_FIELD: 'field_7',
         ASSET: 2,
-        OBRIGACAO: 'EFDC',
+        OBRIGACAO: 'EFD_CONTRIBUICOES',
         TAG_TEMPLATE: 'EFD Contribuições'}
 
 EFDF = {REGISTROS: ['0000', '0001', '0002', '0005', '0015', '0100', '0150', '0175', '0190', 
@@ -119,7 +122,7 @@ EFDF = {REGISTROS: ['0000', '0001', '0002', '0005', '0015', '0100', '0150', '017
         VERSAO: 'field_1',
         COMPANY_NAME_FIELD: 'field_5',
         ASSET: 3,
-        OBRIGACAO: 'EFDF',
+        OBRIGACAO: 'EFD_ICMS_IPI',
         TAG_TEMPLATE: 'EFD ICMS IPI'}
 
 

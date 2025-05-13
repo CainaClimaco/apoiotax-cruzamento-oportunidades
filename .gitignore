@@ -49,6 +49,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.vscode/
 
 # Translations
 *.mo
@@ -132,3 +133,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+*.env

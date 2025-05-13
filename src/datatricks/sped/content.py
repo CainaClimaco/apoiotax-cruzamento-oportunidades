@@ -8,7 +8,7 @@ def read_sped_files(df):
     cont = 1
     for row in df.iter_rows(named=True):
         f = read_file(full_path=row[fd.FULL_PATH], encoding=row[fd.ENCODING], end_of_file_id="9999")
-        f = f.with_columns(id_file = pl.Series([cont]))
+        f = f.with_columns(id_file = pl.lit(cont))
         temp_list.append(f)
         cont +=1
     return pl.concat(temp_list)
@@ -25,7 +25,7 @@ def read_file(full_path, encoding='latin1', end_of_file_id="9999"):
     except UnicodeDecodeError:
         temp_list = basic_file_read(full_path, "latin1", end_of_file_id, temp_list)
 
-    return pl.DataFrame(temp_list, schema={'consolidado':pl.Utf8, 'file':pl.String}, orient="row")
+    return pl.DataFrame(temp_list, schema={'consolidado':pl.Utf8, 'file':pl.String}, orient='row')
 
 
 def basic_file_read(full_path, encoding, end_of_file_id, temp_list):
