@@ -48,7 +48,7 @@ class Sped_cruzamento(Commander):
         ])
         PeriodoNotas.unique(subset=[cd.CHV_NFE], keep="first")
 
-        if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()) & (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()):
+        if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()) & (inbound.filter(pl.col(fd.IS_EFDF)).is_empty()):
             empresa = ""
             cnpj = ""
         else:
@@ -90,7 +90,7 @@ class Sped_cruzamento(Commander):
                                     ).join(df_situacao, left_on="COD_SIT_EFDF", right_on="Código", how="left", suffix="_efdf")
 
         cruzamento = situacao.select(pl.col(cd.CHV_NFE),
-                                   pl.col("Período").alias("PERÍODO"), 
+                                   pl.col("Período").dt.strftime("%d/%m/%Y").alias("PERÍODO"), 
                                    pl.col("EFD CONTRIBUIÇÕES"), 
                                    pl.col("COD_SIT_EFDC"),
                                    pl.col("Descrição ").alias("DESC_COD_SIT_EFDC"), 
@@ -101,14 +101,13 @@ class Sped_cruzamento(Commander):
                                    pl.col("EMISSÃO"),
                                    pl.col("SITUAÇÃO NFE"))
                                    
-        cruzamento = cruzamento.sort(cd.CHV_NFE, 'PERÍODO' ).filter(pl.col(cd.CHV_NFE).is_not_null())
-        print(cruzamento)
+        cruzamento = cruzamento.sort('PERÍODO', cd.CHV_NFE ).filter(pl.col(cd.CHV_NFE).is_not_null())
         
         ### Preenchimento do Excel - Output
 
         template = eh.open_template(self.global_params['template_files'][0])
         ws = template.active
-        ws['B7'] = empresa
+        ws['B7'] = empresa.upper()
         
         self.logger.info("Writing Report of Processed Files")
         eh.dump_data_to_sheet(excel_thing=template, data=cruzamento, starting_cell='B11', write_header=True, sheet_name="SPED x XML")

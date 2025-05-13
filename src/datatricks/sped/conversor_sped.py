@@ -329,5 +329,4 @@ def quebra(inbound, df_asset, sped_type):
     df = split(df, 'texto_consolidado', "|")
     df = remove_equals(df)
     df = df_treatment_pre_file_generation(df, sped_type)
-    df.write_csv('teste.csv')
     return df
