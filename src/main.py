@@ -19,33 +19,27 @@ class Sped_cruzamento(Commander):
         self.logger.info("Starting application.")
         inbound = self.get_incomming_files()
         inbound = fh.get_sped_filters(inbound)
+        print(inbound)
 
         df_contribuicoes = cr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.VERSAO_EFDC, cd.PADRAO_EFDC, cd.EFDC)
         df_fiscal = cr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.VERSAO_EFDF, cd.PADRAO_EFDF, cd.EFDF)
-        df_nfe = cr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE)
+        NFe, xml_erro = cr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE, cd.status_xml)
 
         # Análise: Tratativa para arquivos não processados
-        erro = an.count_arquivos(df_nfe, df_contribuicoes, df_fiscal, self)        
+        erro = an.count_arquivos(NFe, df_contribuicoes, df_fiscal, self)        
         xml = an.filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
         txt = an.filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
-        nfe_duplicada = an.nfe_duplicada(df_nfe, cd.ID)
+        nfe_duplicada = an.nfe_duplicada(NFe, cd.ID)
 
-        analise = pl.concat([xml, txt, nfe_duplicada, erro], how="diagonal")
+        analise = pl.concat([xml, txt, nfe_duplicada, erro, xml_erro], how="diagonal")
         analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
 
         # Cruzamento
         Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
+                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
         Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                  ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(pl.col(cd.CHV_NFE).is_not_null())
-        NFe = df_nfe.unique(subset=[cd.ID], keep="first")
-
-        PeriodoNotas = pl.concat([
-            Contribuicoes.select([cd.CHV_NFE, 'Período']),
-            Fiscal.select([cd.CHV_NFE, 'Período']),
-            NFe.select([cd.CHV_NFE,cd.PERÍODO])
-        ])
-        PeriodoNotas.unique(subset=[cd.CHV_NFE], keep="first")
+                  ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
+        NFe = NFe.unique(subset=[cd.ID], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
 
         if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()) & (inbound.filter(pl.col(fd.IS_EFDF)).is_empty()):
             empresa = ""
@@ -61,26 +55,35 @@ class Sped_cruzamento(Commander):
         Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
         Fiscal = Fiscal.with_columns(pl.lit("SIM").alias("EFD ICMS IPI"))
         NFe = NFe.with_columns(pl.lit("SIM").alias("NFE"))
-       
+
         tratamento = NFe.with_columns([
-            pl.when(cd.CNPJ_DEST == cnpj)
+            pl.when(pl.col(cd.CNPJ_DEST).eq(cnpj))
                 .then(pl.lit("Emissão Terceiros - Entrada"))
-            .when((cd.CNPJ_EMIT == cnpj)  & (pl.col(cd.CFOP)<4000))
+            .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 0))
                 .then(pl.lit("Emissão Própria - Entrada")) 
-            .when((cd.CNPJ_EMIT == cnpj) & (pl.col(cd.CFOP)>4000))
+            .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 1))
                 .then(pl.lit("Emissão Própria - Saída"))
-            .otherwise (pl.lit("Terceiros - Sem Vínculo"))
+            .otherwise(pl.lit("Terceiros - Sem Vínculo"))
             .alias("EMISSÃO")  
-        ])        
-        
+        ])
+
         verificacao = pl.concat([
             Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
             Fiscal.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
             tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
             ], how="diagonal")
-        
-        verificacao = verificacao.unique(subset=[cd.CHV_NFE], keep="first")
 
+        verificacao = verificacao.group_by(cd.CHV_NFE).agg([
+                pl.col("Período").sort(nulls_last=True).first().alias("Período"),
+                pl.col("EFD CONTRIBUIÇÕES").sort(nulls_last=True).first().alias("EFD CONTRIBUIÇÕES"),
+                pl.col("COD_SIT_EFDC").sort(nulls_last=True).first().alias("COD_SIT_EFDC"),
+                pl.col("EFD ICMS IPI").sort(nulls_last=True).first().alias("EFD ICMS IPI"),
+                pl.col("COD_SIT_EFDF").sort(nulls_last=True).first().alias("COD_SIT_EFDF"),
+                pl.col("NFE").sort(nulls_last=True).first().alias("NFE"),
+                pl.col(cd.SITUACAO).sort(nulls_last=True).first().alias(cd.SITUACAO),
+                pl.col("EMISSÃO").sort(nulls_last=True).first().alias("EMISSÃO")
+            ])
+        
         df_situacao = pl.read_excel(
             source = cd.CAMINHO_SITUACAO,
             engine = "openpyxl")
@@ -88,7 +91,7 @@ class Sped_cruzamento(Commander):
         situacao = verificacao.join(df_situacao, left_on="COD_SIT_EFDC", right_on="Código", how="left"
                                     ).join(df_situacao, left_on="COD_SIT_EFDF", right_on="Código", how="left", suffix="_efdf")
 
-        cruzamento = situacao.select(pl.col(cd.CHV_NFE),
+        cruzamento = situacao.select(pl.col(cd.CHV_NFE).alias("CHAVE NFE"),
                                    pl.col("Período").dt.strftime("%d/%m/%Y").alias("PERÍODO"), 
                                    pl.col("EFD CONTRIBUIÇÕES"), 
                                    pl.col("COD_SIT_EFDC"),
@@ -98,9 +101,7 @@ class Sped_cruzamento(Commander):
                                    pl.col("Descrição _efdf").alias("DESC_COD_SIT_EFDF"), 
                                    pl.col("NFE"), 
                                    pl.col("EMISSÃO"),
-                                   pl.col("SITUAÇÃO NFE"))
-                                   
-        cruzamento = cruzamento.sort('PERÍODO', cd.CHV_NFE ).filter(pl.col(cd.CHV_NFE).is_not_null())
+                                   pl.col("SITUAÇÃO NFE")).sort('PERÍODO', "CHAVE NFE" )
         
         ### Preenchimento do Excel - Output
 

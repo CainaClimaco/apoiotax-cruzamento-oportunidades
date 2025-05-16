@@ -22,7 +22,7 @@ def leitor_sped(inbound, obrigacao, sped_type, versao, padrao, definition):
     Description:
         Lê e processa arquivos SPED
     Parameters:
-        inbound: Dataframe com os arquivos recebidos.
+        inbound: Dataframe com as informações sobre os arquivos recebidos.
         obrigacao: Indica a obrigação (ex: EFDC, EFDF).
         sped_type: Dicionário do tipo SPED.
         versao: Versão do layout EFD.
@@ -50,15 +50,14 @@ def leitor_sped(inbound, obrigacao, sped_type, versao, padrao, definition):
     return df_padrao
 
 
-def leitor_nfe(inbound, obrigacao, definition):
+def leitor_nfe(inbound, obrigacao, definition, status):
     """
     Description:
         Lê e processa os arquivos XML de NF-e.
     Parameters:
-        inbound: 
+        inbound: Dataframe com as informações sobre os arquivos recebidos.
         obrigacao: Indica a obrigação (ex: NF-e).
         definition: Dicionário com os nomes padronizados das colunas.
-
     Returns:
         Dataframe com os dados extraídos dos arquivos XML de NF-e. 
     """
@@ -70,9 +69,14 @@ def leitor_nfe(inbound, obrigacao, definition):
             'CNPJ_EMIT':None,
             'CNPJ_DEST': None,
             'SITUAÇÃO NFE': None,
-            'CFOP': None,
+            'tpNF': None,
             'CHV_NFE':None
             })
+        xml_erro = pl.DataFrame({
+            'NOME DO ARQUIVO': None,
+            'PROCESSAMENTO': None ,
+            'STATUS ARQUIVO': None})
+        return NFe,xml_erro
     else:
         df_xml = inbound.filter(pl.col(obrigacao) == True)
         NFe = cx.conversor_xml(df_xml, field_list=[ 'nfeProc_NFe_infNFe_ide_dhEmi', 
@@ -80,12 +84,28 @@ def leitor_nfe(inbound, obrigacao, definition):
                                                     'nfeProc_NFe_infNFe_emit_CNPJ', 
                                                     'nfeProc_NFe_infNFe_dest_CNPJ', 
                                                     'nfeProc_protNFe_infProt_xMotivo', 
-                                                    'nfeProc_NFe_infNFe_det_prod_CFOP', 
+                                                    'nfeProc_NFe_infNFe_ide_tpNF', 
                                                     'nfeProc_protNFe_infProt_chNFe'])
-        NFe = renomear_colunas(NFe, definition)
-        NFe = NFe.with_columns(
-            pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
-            pl.col(cd.CFOP).cast(pl.Int32))
-    return NFe
+        validos = NFe.filter(pl.col("Xml_Content").is_not_null())
+        invalidos = NFe.filter(pl.col('Xml_Content').is_null())
+
+        if not validos.is_empty():
+            validos = (renomear_colunas(validos, definition))
+            validos = validos.with_columns(
+                pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
+                pl.col(cd.tpNF).cast(pl.Int32))
+        if not invalidos.is_empty():
+            xml_erro = invalidos.select([
+                pl.col('file_Name').alias(cd.file_name),
+                pl.lit("Não Processado"). alias(cd.processamento),
+                pl.lit(status).alias(cd.status)
+            ])
+        else:
+            xml_erro = pl.DataFrame({
+            'NOME DO ARQUIVO': None,
+            'PROCESSAMENTO': None ,
+            'STATUS ARQUIVO': None})
+             
+        return validos, xml_erro
  
         

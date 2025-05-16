@@ -8,7 +8,7 @@ ID = 'ID'
 CNPJ_EMIT = 'CNPJ_EMIT'
 CNPJ_DEST = 'CNPJ_DEST'
 SITUACAO = 'SITUAÇÃO NFE'
-CFOP = 'CFOP'
+tpNF = 'tpNF'
 COD_SIT_EFDC = "Código"
 DESC_COD_SIT_EFDC = "Descrição"
 COD_SIT_EFDF = "COD_SIT_EFDF"
@@ -21,8 +21,6 @@ status = "STATUS ARQUIVO"
 
 VERSAO_EFDC = '006' 
 VERSAO_EFDF = '018'
-CAMINHO_EFDC = 'src\\assets\\Registros EFD Contribuicoes v7.xlsx'
-CAMINHO_EFDF = 'src\\assets\\Registros EFD ICMS IPI.xlsx'
 CAMINHO_SITUACAO = 'src\\assets\\Situacao_NF-e.xlsx'
 status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
@@ -53,6 +51,6 @@ NFE = { PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
         CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
         CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
         SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
-        CFOP: 'nfeProc_NFe_infNFe_det_prod_CFOP',
+        tpNF: 'nfeProc_NFe_infNFe_ide_tpNF',
         CHV_NFE:'nfeProc_protNFe_infProt_chNFe'
 }

@@ -5,13 +5,11 @@ def filtrar_fora_do_padrao(df, extensao, obrigacao, status):
     """
     Description:
         Filtra arquivos que não atendem à obrigação especificada, com base na extensão.
-
     Parameters:
         df: Dataframe com as informações dos arquivos.
         extensão: Extensão dos arquivos que devem ser filtrados (ex: '.xml', '.txt').
         obrigação: Indica a obrigação (ex: EFD, NF-e).
         status: Mensagem usada na coluna de status.
-
     Returns:
         Dataframe contendo os arquivos que não atendem à obrigação, com as seguintes colunas:
             file_Name: Nome do arquivo.
@@ -39,7 +37,7 @@ def nfe_duplicada(df, id):
             Processamento: Indica se o arquivo foi processado.
             Status: Informa o motivo do não processamento do arquivo. 
     """
-    duplicatas = pl.struct(id).is_duplicated()
+    duplicatas = pl.col(id).is_duplicated()
     return(
         df.filter(duplicatas).unique(subset=[id], keep="first")
         .select([
@@ -53,16 +51,13 @@ def nfe_duplicada(df, id):
 def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
     """
     Description:
-    Conta a quantidade de arquivos XML e TXT não nulos e valida se existe dado a ser processado.
-
+        Conta a quantidade de arquivos XML e TXT não nulos e valida se existe dado a ser processado.
     Parameters:
         df_xml: Dataframe contendo os arquivos XML (NF-e)
         df_txt_contrib: Dataframe contendo as informações da EFD Contribuições
         df_txt_fiscal: Dataframe contendo as informações da EFD ICMS-IPI
-        self:
-
     Returns:
-        pl.Dataframe: Dataframe com o status informando caso haja a ausencia de arquivos de cada obrigação. 
+        pl.Dataframe: Dataframe com o status informando caso haja a ausência de arquivos de cada obrigação. 
         Encerra a execução se todos estiverem vazios.
     """
     df_xml = df_xml.filter(~pl.all_horizontal(pl.all().is_null()))
