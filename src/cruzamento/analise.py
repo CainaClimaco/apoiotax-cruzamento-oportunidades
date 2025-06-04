@@ -1,20 +1,23 @@
-import os, sys
+import sys
 import polars as pl
 import cruzamento.cruzamento_definition as cd
+import datatricks.io.file_definitions as fd
+
+
 def filtrar_fora_do_padrao(df, extensao, obrigacao, status):
     """
     Description:
-        Filtra arquivos que não atendem à obrigação especificada, com base na extensão.
+        Filter the files that do not meet the specified tax obligation, based on the extension.
     Parameters:
-        df: Dataframe com as informações dos arquivos.
-        extensão: Extensão dos arquivos que devem ser filtrados (ex: '.xml', '.txt').
-        obrigação: Indica a obrigação (ex: EFD, NF-e).
-        status: Mensagem usada na coluna de status.
+        df: Dataframe containing the file information.
+        extensão: File extension to be filterd (e.g., '.xml', '.txt').
+        obrigação: Indicates the type of tax obligation (e.g., EFD, NF-e).
+        status: Message used in the status column.
     Returns:
-        Dataframe contendo os arquivos que não atendem à obrigação, com as seguintes colunas:
-            file_Name: Nome do arquivo.
-            Processamento: Indica se o arquivo foi processado.
-            Status: Informa o motivo do não processamento do arquivo. 
+        Dataframe containing the files that do not meet the requirement, with the following columns:
+            file_Name: File name.
+            Processamento: Indicates whether the file was processed.
+            Status: Provides the reason why the file was not processed. 
     """
     return df.filter(
         (pl.col("file_Name").str.ends_with(extensao)) & (~obrigacao)
@@ -24,18 +27,19 @@ def filtrar_fora_do_padrao(df, extensao, obrigacao, status):
         pl.lit(status).alias(cd.status)
     ])
 
+
 def nfe_duplicada(df, id):
     """
     Description:
-        Identifica os registros duplicados com base no campo identificador.
+        Identifies duplicated records based on the identifier field.
     Parameters:
-        df: Dataframe com as informações das Notas Fiscais.
-        id: Coluna contendo o identificador único da nota.
+        df: Dataframe containing the NF-e information.
+        id: Column containing the NF-e unique identifier.
     Returns:
-        Dataframe contendo as notas duplicadas, com as seguintes colunas:
-            file_Name: Nome do arquivo.
-            Processamento: Indica se o arquivo foi processado.
-            Status: Informa o motivo do não processamento do arquivo. 
+        Dataframe containing the files that do not meet the requirement, with the following columns:
+            file_Name: File name.
+            Processamento: Indicates whether the file was processed.
+            Status: Provides the reason why the file was not processed.
     """
     duplicatas = pl.col(id).is_duplicated()
     return(
@@ -51,14 +55,14 @@ def nfe_duplicada(df, id):
 def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
     """
     Description:
-        Conta a quantidade de arquivos XML e TXT não nulos e valida se existe dado a ser processado.
+        Counts the number of non-null XML and TXT files and checks whether there is data to be processed.
     Parameters:
-        df_xml: Dataframe contendo os arquivos XML (NF-e)
-        df_txt_contrib: Dataframe contendo as informações da EFD Contribuições
-        df_txt_fiscal: Dataframe contendo as informações da EFD ICMS-IPI
+        df_xml: Dataframe containing the XML files (NF-e).
+        df_txt_contrib: Dataframe containing the EFD Contribuições information.
+        df_txt_fiscal: Dataframe containing the EFD ICMS-IPI information.
     Returns:
-        pl.Dataframe: Dataframe com o status informando caso haja a ausência de arquivos de cada obrigação. 
-        Encerra a execução se todos estiverem vazios.
+        pl.Dataframe: Dataframe with a status indicating if any obligation files are missing.. 
+        It terminates the execution if all dataframes ar empty.
     """
     df_xml = df_xml.filter(~pl.all_horizontal(pl.all().is_null()))
     df_txt_contrib = df_txt_contrib.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -76,3 +80,15 @@ def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
         return pl.DataFrame({cd.status: ["Nenhum TXT SPED encontrado"]})
     else:
         return pl.DataFrame({cd.status: [None]})
+    
+    
+def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
+    erro = count_arquivos(NFe, df_contribuicoes, df_fiscal, self)        
+    xml = filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
+    txt = filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
+    duplicada = nfe_duplicada(NFe, cd.ID)
+
+    analise = pl.concat([xml, txt, duplicada, erro, xml_erro], how="diagonal")
+    analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
+    
+    return analise

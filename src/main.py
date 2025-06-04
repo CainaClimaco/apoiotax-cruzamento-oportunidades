@@ -1,126 +1,40 @@
-import os, sys
-from datatricks.commander.prompt_commander import Commander
-import datatricks.sped.sped_definitions as dfn
-import datatricks.io.file_helper as fh
-import datatricks.io.excel_handler as eh
+import os
+import sys
+import shutil
+import cruzamento.Receita as re
+import cruzamento.write_excel as we
+import cruzamento.Escrituracao as es
 import datatricks.io.file_definitions as fd
 import cruzamento.cruzamento_definition as cd
-import cruzamento.cruzamento as cr
-import cruzamento.analise as an
-import shutil
-import polars as pl
-from datetime import datetime
-from pathlib import Path
+import datatricks.sped.sped_definitions as dfn
+import cruzamento.file_reader as fr
+import datatricks.io.file_helper as fh
+from datatricks.commander.prompt_commander import Commander
+import json
 
 
 class Sped_cruzamento(Commander):
-
     def execute(self):
         self.logger.info("Starting application.")
         inbound = self.get_incomming_files()
         inbound = fh.get_sped_filters(inbound)
-        print(inbound)
+        operation = self.global_params["form_Tipo"]        
 
-        df_contribuicoes = cr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.VERSAO_EFDC, cd.PADRAO_EFDC, cd.EFDC)
-        df_fiscal = cr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.VERSAO_EFDF, cd.PADRAO_EFDF, cd.EFDF)
-        NFe, xml_erro = cr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE, cd.status_xml)
+        df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.VERSAO_EFDC, cd.PADRAO_EFDC, cd.EFDC)
+        df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.VERSAO_EFDF, cd.PADRAO_EFDF, cd.EFDF) 
 
-        # Análise: Tratativa para arquivos não processados
-        erro = an.count_arquivos(NFe, df_contribuicoes, df_fiscal, self)        
-        xml = an.filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
-        txt = an.filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
-        nfe_duplicada = an.nfe_duplicada(NFe, cd.ID)
+        match operation.upper():
+            case "EFD_F_X_EFD_C_X_NF-E_(ESCRITURAÇÃO)":
+                escrituracao, empresa, analise = es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self)
+                we.excel_escrituracao(self, empresa, escrituracao, analise)
+            case "EFD_F_X_EFD_C_X_NF-E_(RECEITA)":
+                receita ,empresa, analise = re.process_receita(inbound,df_contribuicoes, df_fiscal, self)
+                # we.excel_receita(self, empresa, , analise)
 
-        analise = pl.concat([xml, txt, nfe_duplicada, erro, xml_erro], how="diagonal")
-        analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
 
-        # Cruzamento
-        Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                         ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
-        Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                  ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
-        NFe = NFe.unique(subset=[cd.ID], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
-
-        if (inbound.filter(pl.col(fd.IS_EFDC)).is_empty()) & (inbound.filter(pl.col(fd.IS_EFDF)).is_empty()):
-            empresa = ""
-            cnpj = ""
-        else:
-            empresaCNPJ =  pl.concat([
-                df_contribuicoes.select([cd.NOME, cd.CNPJ, 'Registro']).filter(pl.col("Registro") == '0000'),
-                df_fiscal.select([cd.NOME, cd.CNPJ, 'Registro']).filter(pl.col("Registro") == '0000')
-            ]).unique(subset=[cd.CNPJ], keep="first")
-            empresa = (empresaCNPJ.select([cd.NOME]).item(0,0))
-            cnpj = (empresaCNPJ.select([cd.CNPJ]).item(0,0))
-
-        Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
-        Fiscal = Fiscal.with_columns(pl.lit("SIM").alias("EFD ICMS IPI"))
-        NFe = NFe.with_columns(pl.lit("SIM").alias("NFE"))
-
-        tratamento = NFe.with_columns([
-            pl.when(pl.col(cd.CNPJ_DEST).eq(cnpj))
-                .then(pl.lit("Emissão Terceiros - Entrada"))
-            .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 0))
-                .then(pl.lit("Emissão Própria - Entrada")) 
-            .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 1))
-                .then(pl.lit("Emissão Própria - Saída"))
-            .otherwise(pl.lit("Terceiros - Sem Vínculo"))
-            .alias("EMISSÃO")  
-        ])
-
-        verificacao = pl.concat([
-            Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
-            Fiscal.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
-            tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
-            ], how="diagonal")
-
-        verificacao = verificacao.group_by(cd.CHV_NFE).agg([
-                pl.col("Período").sort(nulls_last=True).first().alias("Período"),
-                pl.col("EFD CONTRIBUIÇÕES").sort(nulls_last=True).first().alias("EFD CONTRIBUIÇÕES"),
-                pl.col("COD_SIT_EFDC").sort(nulls_last=True).first().alias("COD_SIT_EFDC"),
-                pl.col("EFD ICMS IPI").sort(nulls_last=True).first().alias("EFD ICMS IPI"),
-                pl.col("COD_SIT_EFDF").sort(nulls_last=True).first().alias("COD_SIT_EFDF"),
-                pl.col("NFE").sort(nulls_last=True).first().alias("NFE"),
-                pl.col(cd.SITUACAO).sort(nulls_last=True).first().alias(cd.SITUACAO),
-                pl.col("EMISSÃO").sort(nulls_last=True).first().alias("EMISSÃO")
-            ])
-        
-        df_situacao = pl.read_excel(
-            source = cd.CAMINHO_SITUACAO,
-            engine = "openpyxl")
-
-        situacao = verificacao.join(df_situacao, left_on="COD_SIT_EFDC", right_on="Código", how="left"
-                                    ).join(df_situacao, left_on="COD_SIT_EFDF", right_on="Código", how="left", suffix="_efdf")
-
-        cruzamento = situacao.select(pl.col(cd.CHV_NFE).alias("CHAVE NFE"),
-                                   pl.col("Período").dt.strftime("%d/%m/%Y").alias("PERÍODO"), 
-                                   pl.col("EFD CONTRIBUIÇÕES"), 
-                                   pl.col("COD_SIT_EFDC"),
-                                   pl.col("Descrição ").alias("DESC_COD_SIT_EFDC"), 
-                                   pl.col("EFD ICMS IPI"),
-                                   pl.col("COD_SIT_EFDF"), 
-                                   pl.col("Descrição _efdf").alias("DESC_COD_SIT_EFDF"), 
-                                   pl.col("NFE"), 
-                                   pl.col("EMISSÃO"),
-                                   pl.col("SITUAÇÃO NFE")).sort('PERÍODO', "CHAVE NFE" )
-        
-        ### Preenchimento do Excel - Output
-
-        template = eh.open_template(self.global_params['template_files'][0])
-        ws = template.active
-        ws['B7'] = empresa.upper()
-        
-        self.logger.info("Writing Report of Processed Files")
-        eh.dump_data_to_sheet(excel_thing=template, data=cruzamento, starting_cell='B11', write_header=True, sheet_name="SPED x XML")
-        eh.dump_data_to_sheet(excel_thing=template, data=analise, starting_cell='B11', write_header=True, sheet_name="ARQUIVOS_PARA_ANALISE")
-        template.save(self.global_params['template_files'][0])
-        os.rename(self.global_params['template_files'][0], f'{self.global_params["output"]}Check SPED x XML{datetime.now():%d-%m-%Y_%H-%M-%S}.xlsx')
-        
-        self.logger.info("Ending execution.")
-        
-                      
 if __name__ == "__main__":
-    if os.path.exists(r'C:\Users\Apter\Documents\Projetos\projetos\Dados\base_cruzamentos\output'):
-        shutil.rmtree(r'C:\Users\Apter\Documents\Projetos\projetos\Dados\base_cruzamentos\output')
+    if os.path.exists(r'C:\Projetos\projetos\Dados\base_cruzamentos\output'):
+        shutil.rmtree(r'C:\Projetos\projetos\Dados\base_cruzamentos\output')
     cmd = Sped_cruzamento(app = 'Sped Cruzamento', path=os.path.abspath(__file__), args=sys.argv)
     cmd.process()
     del(cmd)

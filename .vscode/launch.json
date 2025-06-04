@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\Apter\\Documents\\Projetos\\projetos\\Dados\\base_cruzamentos\\base_cruzamentos\\Output", "-n", "Sped Cruzamento", "-s", "{'Tipo':'EFD Contribuicoes'}"
+                "-i", "C:\\Projetos\\projetos\\Dados\\Mars\\teste", "-n", "Sped Cruzamento", "-s", "{'Tipo':'EFD_F_X_EFD_C_X_NF-E_(RECEITA)'}"
             ]
         }
     ]

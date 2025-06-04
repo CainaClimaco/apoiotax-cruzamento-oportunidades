@@ -1,21 +1,21 @@
 import polars as pl
 import datatricks.sped.conversor_sped as cs
-import cruzamento.cruzamento_definition as cf
 
 def sped_padrao(sped_type, versao):
     """
     Description:
-        Lê um arquivo Excel com o layout padrão do SPED e transforma em um Dataframe.
+        Reads an Excel file with the SPED layout and transpose it into a Dataframe
     Parameters:
-        caminho: Caminho dos arquivos Excel contendo o layout padrão. 
-        versao: Versão do layout que será utilizada.
+        sped_type: Sped type dictionary
+        versao: Layout version to be used.
     Returns:
-        Dataframe com a estrutura base do SPED, transposto. 
+        A transposed Dataframe with the base structure of the SPED. 
     """
     df_padrao = (cs.get_remote_assets(sped_type)).filter(
-            ((pl.col("Registro") == 'C100') & (pl.col("Versao") == versao)) | 
-            ((pl.col("Registro") == '0000') & (pl.col("Versao") == versao))
-        ) 
+        ((pl.col("Registro") == 'C100') & (pl.col("Versao") == versao)) | 
+        ((pl.col("Registro") == '0000') & (pl.col("Versao") == versao))
+    ) 
+
 
     contadores = {}
     novo_campo = []
@@ -28,13 +28,15 @@ def sped_padrao(sped_type, versao):
         else:
             novo_campo.append(f"{valor_str}_{contadores[valor_str]-1}")
 
+
     df_padrao = df_padrao.with_columns([
         pl.Series("Campo", novo_campo)
     ])
     df_transpose = df_padrao.transpose(column_names="Campo")
     df_transpose = (df_transpose.with_columns([
         pl.col(col).map_elements(lambda x: None if isinstance(x, str) else x, return_dtype=df_transpose.schema[col])
-        for col in df_transpose.columns]).with_columns([pl.lit(None).alias("Período")])
+        for col in df_transpose.columns])
+        .with_columns([pl.lit(None).alias("Período")])
         .unique(subset=["REG"], keep="first"))
             
     df_transpose = df_transpose.with_columns(pl.col("Período").cast(pl.Date))            
