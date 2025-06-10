@@ -1,22 +1,28 @@
 import polars as pl
 import cruzamento.cruzamento_definition as cd
 import datatricks.io.file_definitions as fd
-import cruzamento.cruzamento_definition as cd
+import datatricks.sped.sped_definitions as dfn
 import cruzamento.file_reader as fr
 import cruzamento.analise as an
 import cruzamento.empresa as em
 
 
 def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
-
-    NFe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.NFE, cd.status_xml)
-    
+    regex_list = None
+    NFe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_e], field_list=cd.NFE[cd.CAMPOS_ESCRITURACAO])
+    NFe = NFe.with_columns(
+                pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
+                pl.col(cd.tpNF).cast(pl.Int32))
     analise = an.analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
     
-    Contribuicoes = (df_contribuicoes.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-                    ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
-    Fiscal = (df_fiscal.select(['Registro', cd.COD_SIT, cd.CHV_NFE, 'Período'])
-            ).filter(pl.col("Registro") == 'C100').unique(subset=[cd.CHV_NFE], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
+    Contribuicoes = (df_contribuicoes.select([dfn.REGISTRO, cd.COD_SIT, cd.CHV_NFE, dfn.PERIODO])
+                    ).filter(pl.col(dfn.REGISTRO) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
+                    ).filter(~pl.all_horizontal(pl.all().is_null()))
+    
+    Fiscal = (df_fiscal.select([dfn.REGISTRO, cd.COD_SIT, cd.CHV_NFE, dfn.PERIODO])
+            ).filter(pl.col(dfn.REGISTRO) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
+            ).filter(~pl.all_horizontal(pl.all().is_null()))
+    
     NFe = NFe.unique(subset=[cd.ID], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
 
 
@@ -26,8 +32,8 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
         
 
     df_empresa = pl.concat([
-        df_contribuicoes.select([cd.NOME, cd.CNPJ, 'Registro']).filter(pl.col("Registro") == '0000'),
-        df_fiscal.select([cd.NOME, cd.CNPJ, 'Registro']).filter(pl.col("Registro") == '0000')
+        df_contribuicoes.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000'),
+        df_fiscal.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000')
     ])
     empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
 
@@ -45,13 +51,13 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
 
 
     verificacao = pl.concat([
-        Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD CONTRIBUIÇÕES"), pl.col("COD_SIT").alias("COD_SIT_EFDC").cast(pl.Utf8)),
-        Fiscal.select(pl.col(cd.CHV_NFE),pl.col("Período"), pl.col("EFD ICMS IPI"), pl.col("COD_SIT").alias("COD_SIT_EFDF").cast(pl.Utf8)),
+        Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col(dfn.PERIODO), pl.col("EFD CONTRIBUIÇÕES"), pl.col(cd.COD_SIT).alias("COD_SIT_EFDC").cast(pl.Utf8)),
+        Fiscal.select(pl.col(cd.CHV_NFE),pl.col(dfn.PERIODO), pl.col("EFD ICMS IPI"), pl.col(cd.COD_SIT).alias("COD_SIT_EFDF").cast(pl.Utf8)),
         tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
         ], how="diagonal")
 
     verificacao = verificacao.group_by(cd.CHV_NFE).agg([
-        pl.col("Período").dt.strftime("%d/%m/%Y").sort(nulls_last=True).first().alias("PERÍODO"),
+        pl.col(dfn.PERIODO).dt.strftime("%d/%m/%Y").sort(nulls_last=True).first().alias("PERÍODO"),
         pl.col("EFD CONTRIBUIÇÕES").sort(nulls_last=True).first().alias("EFD CONTRIBUIÇÕES"),
         pl.col("COD_SIT_EFDC").sort(nulls_last=True).first().alias("COD_SIT_EFDC"),
         pl.col("EFD ICMS IPI").sort(nulls_last=True).first().alias("EFD ICMS IPI"),
@@ -72,4 +78,6 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
 
     escrituracao = situacao.sort('PERÍODO', cd.CHV_NFE )
 
-    return escrituracao, empresa, analise
+    return(empresa, escrituracao, analise)
+
+

@@ -86,7 +86,7 @@ def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
     erro = count_arquivos(NFe, df_contribuicoes, df_fiscal, self)        
     xml = filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
     txt = filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
-    duplicada = nfe_duplicada(NFe, cd.ID)
+    duplicada = nfe_duplicada(NFe, cd.CHV_NFE)
 
     analise = pl.concat([xml, txt, duplicada, erro, xml_erro], how="diagonal")
     analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))

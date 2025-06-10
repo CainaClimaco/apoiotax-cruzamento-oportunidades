@@ -3,7 +3,9 @@ import xml
 from xmltodict import parse
 import datatricks.io.file_definitions as dt_fd
 import ast
-import time
+import re
+
+
 def flatten(input_dict, separator='_', prefix=''):
             output_dict = {}
 
@@ -45,32 +47,47 @@ def process_content_xml_file(full_Path, file_Encoding):
             except xml.parsers.expat.ExpatError:
                 return None
 
-def find_key(str_content, keys):
+
+def find_matching_fields(regex_list, dicionario):
+    all_keys = set()
+    for d in dicionario:
+        all_keys.update(d.keys())
+
+    patterns = [re.compile(pattern) for pattern in regex_list]
+    return [key for key in all_keys if any(p.fullmatch(key) for p in patterns)]
+
+
+def find_key(str_content, regex_list, keys):
     dict_xml = ast.literal_eval(str_content)
     content = {}
-    if keys == []:
-          return dict_xml
+
+    if not keys:
+        return dict_xml
+
     for key in keys:
-        try: 
-            content[key] = dict_xml.get(key)
-        except:
-            content[key] = None
-    return content 
+        content[key] = dict_xml.get(key, None)
+
+    matching = find_matching_fields(regex_list, [dict_xml])
+    for match in matching:
+        content[match] = dict_xml.get(match, None)
+    return content
 
 def file_content(df):
             df_File_Content_Col = df.with_columns(pl.struct(pl.all())
                                                   .map_elements(lambda x: process_content_xml_file(x[dt_fd.FULL_PATH], x[dt_fd.ENCODING]), return_dtype=pl.String)
-                                                  .alias(dt_fd.XML_CONTENT))
+                                                  .alias(dt_fd.XML_CONTENT))            
             return df_File_Content_Col
 
-def extract_columns(df, field_list):
+
+def extract_columns(df, regex_list, field_list):
     df = df.with_columns(pl.col(dt_fd.XML_CONTENT).str.replace('"', "").alias(dt_fd.XML_CONTENT))
     df = df.select(dt_fd.XML_CONTENT, 'full_Path', 'file_Name')
-    df = df.with_columns(pl.col(dt_fd.XML_CONTENT).map_elements(lambda x: find_key(x, field_list), return_dtype=pl.Struct).alias('new_columns'))
+    df = df.with_columns(pl.col(dt_fd.XML_CONTENT).map_elements(lambda x: find_key(x, regex_list if regex_list is not None else [], field_list), return_dtype=pl.Struct).alias('new_columns'))
     df = df.unnest('new_columns')
     return df
 
-def conversor_xml(inbound, field_list=[]):
+
+def conversor_xml(inbound, regex_list=[], field_list=[]):
       df = file_content(inbound)
-      df = extract_columns(df, field_list)
+      df = extract_columns(df, regex_list, field_list)
       return df

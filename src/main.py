@@ -10,7 +10,7 @@ import datatricks.sped.sped_definitions as dfn
 import cruzamento.file_reader as fr
 import datatricks.io.file_helper as fh
 from datatricks.commander.prompt_commander import Commander
-import json
+import cruzamento.write_excel as we
 
 
 class Sped_cruzamento(Commander):
@@ -20,16 +20,18 @@ class Sped_cruzamento(Commander):
         inbound = fh.get_sped_filters(inbound)
         operation = self.global_params["form_Tipo"]        
 
-        df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.VERSAO_EFDC, cd.PADRAO_EFDC, cd.EFDC)
-        df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.VERSAO_EFDF, cd.PADRAO_EFDF, cd.EFDF) 
+
+        df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.PADRAO_EFDC, cd.EFDC)
+        df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.PADRAO_EFDF, cd.EFDF) 
+
 
         match operation.upper():
-            case "EFD_F_X_EFD_C_X_NF-E_(ESCRITURAÇÃO)":
-                escrituracao, empresa, analise = es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self)
+            case cd.escrituracao:
+                empresa, escrituracao, analise = es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self)
                 we.excel_escrituracao(self, empresa, escrituracao, analise)
-            case "EFD_F_X_EFD_C_X_NF-E_(RECEITA)":
-                receita ,empresa, analise = re.process_receita(inbound,df_contribuicoes, df_fiscal, self)
-                # we.excel_receita(self, empresa, , analise)
+                
+            case cd.receita:
+                re.process_receita(inbound,df_contribuicoes, df_fiscal, self)
 
 
 if __name__ == "__main__":

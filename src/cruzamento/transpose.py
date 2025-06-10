@@ -1,20 +1,21 @@
 import polars as pl
 import datatricks.sped.conversor_sped as cs
+import cruzamento.cruzamento_definition as cd
 
-def sped_padrao(sped_type, versao):
+def sped_padrao(sped_type):
     """
     Description:
         Reads an Excel file with the SPED layout and transpose it into a Dataframe
     Parameters:
         sped_type: Sped type dictionary
-        versao: Layout version to be used.
     Returns:
         A transposed Dataframe with the base structure of the SPED. 
     """
-    df_padrao = (cs.get_remote_assets(sped_type)).filter(
-        ((pl.col("Registro") == 'C100') & (pl.col("Versao") == versao)) | 
-        ((pl.col("Registro") == '0000') & (pl.col("Versao") == versao))
-    ) 
+    df_padrao = (cs.get_remote_assets(sped_type))
+    versao = df_padrao.select(pl.col(cd.VERSAO).max()).item(0, 0)
+
+    df_padrao = df_padrao.filter(((pl.col("Registro") == 'C100') & (pl.col(cd.VERSAO) == versao)) | 
+        ((pl.col("Registro") == '0000') & (pl.col(cd.VERSAO) == versao))) 
 
 
     contadores = {}
@@ -39,6 +40,7 @@ def sped_padrao(sped_type, versao):
         .with_columns([pl.lit(None).alias("Período")])
         .unique(subset=["REG"], keep="first"))
             
-    df_transpose = df_transpose.with_columns(pl.col("Período").cast(pl.Date))            
+    df_transpose = df_transpose.with_columns(pl.col("Período").cast(pl.Date))      
+     
     return df_transpose
 

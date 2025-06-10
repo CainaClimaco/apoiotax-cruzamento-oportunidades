@@ -19,22 +19,21 @@ def renomear_colunas(df, mapping: dict[str, str]):
     return df.rename(rename_dict)
 
 
-def leitor_sped(inbound, obrigacao, sped_type, versao, padrao, definition):
+def leitor_sped(inbound, obrigacao, sped_type, padrao, definition):
     """
     Description:
         Reads and processes SPED files
     Parameters:
         inbound: Dataframe containing information about the recieved files.
         obrigacao: Indicates the tax obligation (e.g., EFDC, EFDF).
-        sped_type: sped type dictionary 
-        versao: EFD layout version.
+        sped_type: sped type dictionary.
         padrao: Dictionary containing the normalized column names.
         definition: Dictionary used to rename the Dataframe columns.
     Returns:
         Dataframe with the data extracted from the sped files.
     """
     if inbound.filter(pl.col(obrigacao)).is_empty():
-            df_padrao = tr.sped_padrao(sped_type, versao)
+            df_padrao = tr.sped_padrao(sped_type)
             df_padrao = renomear_colunas(df_padrao, padrao)
     else:
             df_efd = inbound.filter(pl.col(obrigacao) == True)
@@ -44,23 +43,22 @@ def leitor_sped(inbound, obrigacao, sped_type, versao, padrao, definition):
                 .then(pl.col(definition[cd.NOME])).otherwise(pl.lit(None)).alias(cd.NOME),
                 pl.when(pl.col("Registro").eq("0000"))
                 .then(pl.col(definition[cd.CNPJ])).otherwise(pl.lit(None)).alias(cd.CNPJ),
-                pl.when(pl.col("Registro").eq("C100")|  pl.col("Registro").eq("C190") | pl.col("Registro").eq("C170"))
+                pl.when(pl.col("Registro").eq("C100"))
                 .then(pl.col(definition[cd.COD_SIT])).otherwise(pl.lit(None)).alias(cd.COD_SIT),
-                pl.when(pl.col("Registro").eq("C100")| pl.col("Registro").eq("C190") |  pl.col("Registro").eq("C170")) 
+                pl.when(pl.col("Registro").eq("C100")) 
                 .then(pl.col(definition[cd.CHV_NFE])).otherwise(pl.lit(None)).alias(cd.CHV_NFE)
-            
             ])
     return df_padrao
 
 
-def leitor_nfe(inbound, obrigacao, definition, status):
+def leitor_nfe(inbound, obrigacao, status, regex_list=[], rename=[], field_list=[]):
     """
     Description:
         Reads and processes XML files (NF-e).
     Parameters:
         inbound: Dataframe containing information about the recieved files.
         obrigacao:  Indicates the tax obligation (ex: NF-e).
-        definition: Dictionary used to rename the Dataframe columns.
+        status: Message used in the status column. 
     Returns:
         Dataframe with the data extracted from the NF-e XML files. 
     """
@@ -82,15 +80,12 @@ def leitor_nfe(inbound, obrigacao, definition, status):
         return NFe,xml_erro
     else:
         df_xml = inbound.filter(pl.col(obrigacao) == True)
-        NFe = cx.conversor_xml(df_xml, field_list=cd.NFE[cd.CAMPOS_ESCRITURACAO])
+        NFe = cx.conversor_xml(df_xml, regex_list, field_list)
         validos = NFe.filter(pl.col("Xml_Content").is_not_null())
         invalidos = NFe.filter(pl.col('Xml_Content').is_null())
 
         if not validos.is_empty():
-            validos = (renomear_colunas(validos, cd.NFE["rename"]))
-            validos = validos.with_columns(
-                pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
-                pl.col(cd.tpNF).cast(pl.Int32))
+            validos = (renomear_colunas(validos, rename))
         if not invalidos.is_empty():
             xml_erro = invalidos.select([
                 pl.col('file_Name').alias(cd.file_name),
