@@ -12,11 +12,11 @@ Registro = 'Registro'
 file_name = "NOME DO ARQUIVO"
 processamento = "PROCESSAMENTO"
 status = "STATUS ARQUIVO"
+DESC_COD_SIT = "Descrição"
 
 
 CAMPOS_ESCRITURACAO = "CAMPOS_E"
 COD_SIT_EFDC = "Código"
-DESC_COD_SIT_EFDC = "Descrição"
 COD_SIT_EFDF = "COD_SIT_EFDF"
 DESC_COD_SIT_EFDF = "DESC_COD_SIT_EFDF"
 SITUACAO = 'SITUAÇÃO NFE'
@@ -51,6 +51,17 @@ xPais_DEST = "xPais_DEST"
 xMun_DEST = "xMun_DEST"
 xPais_EMIT = "xPais_EMIT"
 xMun_EMIT = "xMun_EMIT"
+vOutro = "vOutro"
+vDesc = "vDesc"
+vSeg = "vSeg"
+vFrete = "vFrete"
+vProd = "vProd"
+vProd_Right = "vProd_right"
+vICMSDeson = "vICMSDeson"
+variable = "variable"
+novoCampo = "novo_campo"
+nItem = "NItem"
+value = "value"
 
 
 
@@ -114,7 +125,13 @@ NFE = {
         xMun_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xMun',
         xPais_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xPais',
         xMun_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xMun',
-        xPais_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xPais'
+        xPais_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xPais',
+        vICMSDeson: 'nfeProc_NFe_infNFe_total_ICMSTot_vICMSDeson',
+        vProd:'nfeProc_NFe_infNFe_total_ICMSTot_vProd',
+        vFrete:'nfeProc_NFe_infNFe_total_ICMSTot_vFrete',
+        vSeg:'nfeProc_NFe_infNFe_total_ICMSTot_vSeg',
+        vDesc:'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
+        vOutro:'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
         },
 
         CAMPOS_RECEITA:
@@ -128,8 +145,14 @@ NFE = {
         'nfeProc_NFe_infNFe_emit_enderEmit_xMun',
         'nfeProc_NFe_infNFe_emit_enderEmit_xPais',
         'nfeProc_NFe_infNFe_dest_enderDest_xMun',
-        'nfeProc_NFe_infNFe_dest_enderDest_xPais']
-}
+        'nfeProc_NFe_infNFe_dest_enderDest_xPais',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vICMSDeson',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vProd',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vFrete',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vSeg',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
+        'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
+        ]}
 
 C_re_C100 = {
         COD_PART: 'field_8'

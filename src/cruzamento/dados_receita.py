@@ -49,35 +49,93 @@ def rename_columns(df:DataFrame, asset:DataFrame, version:str, register:str) -> 
         cols_to_drop = [col for col in columns if col.startswith('field_')]
         df = df.drop(cols_to_drop)
         return df
+
+
 def processXML(inbound):
+
     regex_list = [
     r'^(nfeProc_NFe_infNFe_det_)(\d+_)*prod_CFOP$',
-    r'^(nfeProc_NFe_infNFe_det_)(\d+_)*prod_vProd$'
-]
-    df_nfe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_r],field_list=cd.NFE[cd.CAMPOS_RECEITA] )
+    r'^(nfeProc_NFe_infNFe_det_)(\d+_)*prod_vProd$']
 
-    df_nfe = df_nfe.select(pl.col(cd.CHV_NFE), pl.col(*regex_list))
+    df_nfe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_r], field_list=cd.NFE[cd.CAMPOS_RECEITA])
+    df_long = df_nfe.select(pl.col(cd.CHV_NFE), pl.col(*regex_list)) 
 
-    
-    df_long = df_nfe.unpivot( index=[cd.CHV_NFE])
-
+    df_long = df_long.unpivot(index=[cd.CHV_NFE])
 
     df_long = df_long.with_columns(
-        pl.col("variable").str.extract(r"_(\d+)_", 1).cast(pl.Int64).alias("NItem"),
-        pl.col("variable").str.replace(r"det_\d+_", "det_").alias("novo_campo")
+        pl.when(pl.col(cd.variable).str.contains(r"_\d+_"))
+        .then(pl.col(cd.variable))
+        .otherwise(
+        pl.col(cd.variable).str.replace(r"(det_)", r"\g<1>1_")))
+    
+
+    df_long = df_long.with_columns(
+        pl.col(cd.variable).str.extract(r"_(\d+)_", 1).cast(pl.Int64).alias(cd.nItem),
+        pl.col(cd.variable).str.extract(r"(vProd|CFOP)$", 1).alias(cd.novoCampo))
+
+
+    df_long= df_long.pivot(cd.novoCampo, index=[cd.CHV_NFE, cd.nItem], values=cd.value)
+    df_long = df_long.group_by([cd.CFOP, cd.CHV_NFE]).agg(pl.col(cd.vProd).sum())
+
+    NFe = df_nfe.join(df_long, on= cd.CHV_NFE, how='full').drop(pl.col(*regex_list))
+    NFe = NFe.with_columns(
+        pl.col(cd.CFOP).cast(pl.Int64),
+        pl.col(cd.vProd).cast(pl.Float64),
+        pl.col(cd.vProd_Right).cast(pl.Float64),
+        pl.col(cd.vFrete).cast(pl.Float64),
+        pl.col(cd.vSeg).cast(pl.Float64),
+        pl.col(cd.vDesc).cast(pl.Float64),
+        pl.col(cd.vOutro).cast(pl.Float64),
+        pl.col(cd.vICMSDeson).cast(pl.Float64),
+        pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False)
     )
 
-    df_long= df_long.pivot("novo_campo", index=[cd.CHV_NFE, "NItem"], values="value")
-
+    NFe = NFe.with_columns([
     
-    return  xml_erro
+    pl.when(pl.col(cd.xMun_DEST) != "Exterior")
+    .then(cd.xMun_DEST)
+    .otherwise (pl.col(cd.xPais_DEST))
+    .alias(cd.xMun_DEST),
+
+    pl.when(pl.col(cd.xMun_EMIT) != "Exterior")
+    .then(cd.xMun_EMIT)
+    .otherwise (pl.col(cd.xPais_EMIT))
+    .alias(cd.xMun_EMIT), 
+
+    pl.when(pl.col(cd.vProd) == 0)
+      .then(0.0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vFrete)).round(2))
+      .alias(cd.vFrete),
+
+    pl.when(pl.col(cd.vProd) == 0)
+      .then(0.0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vSeg)).round(2))
+      .alias(cd.vSeg),
+
+    pl.when(pl.col(cd.vProd) == 0)
+      .then(0.0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vDesc)).round(2))
+      .alias(cd.vDesc),
+    
+    pl.when(pl.col(cd.vProd) == 0)
+      .then(0.0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vOutro)).round(2))
+      .alias(cd.vOutro),
+
+    pl.when(pl.col(cd.vProd) == 0)
+      .then(0.0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vICMSDeson)).round(2))
+      .alias(cd.vICMSDeson)
+    ])
+
+    return NFe, xml_erro
         
 
 def process(df_contribuicoes, df_fiscal):
     
         df_json = pl.read_json(cd.json_path)
         lista_contr = df_json.get_column("Registros_contri")
-        Contribuicoes = df_contribuicoes.filter(pl.col("Registro").is_in(lista_contr))
+        Contribuicoes = df_contribuicoes.filter(pl.col(cd.Registro).is_in(lista_contr))
         version_c = df_contribuicoes.select(pl.col(dfn.VERSAO))[0].item()
         df_assets_c = cv.get_remote_assets(dfn.EFDC)
 
@@ -147,7 +205,7 @@ def process(df_contribuicoes, df_fiscal):
         df_cont_renomeado = Contribuicoes.with_columns(
             pl.coalesce([pl.col(cd.VL_ITEM), pl.col("VL_REC_COMP"), pl.col("VL_REC_CAIXA"), pl.col("VL_TOT_REC"), 
                          pl.col("VL_BRT"), pl.col("VL_DOC"), pl.col("VL_OPER"), pl.col("VL_OPR") ]).alias(cd.VL_ITEM),
-            pl.coalesce([pl.col("CST_COFINS"), pl.col("CST_PIS")]).alias("CST"),
+            pl.coalesce([pl.col("CST_COFINS"), pl.col("CST_PIS")]).alias(cd.CST),
             pl.coalesce([pl.col("DT_OPER"), pl.col("DT_REF"), pl.col("DT_DOC_INI"), pl.col(cd.DT_DOC)]).alias(cd.DT_DOC),
             pl.coalesce([pl.col("NUM_DOC_INI"), pl.col(cd.NUM_DOC)]).alias(cd.NUM_DOC),
             pl.coalesce([pl.col("COD_SIT;"), pl.col(cd.COD_SIT)]).alias(cd.COD_SIT),
@@ -155,7 +213,7 @@ def process(df_contribuicoes, df_fiscal):
             )
         
         lista_fiscal = df_json.get_column("Registros_fiscal")
-        Fiscal = df_fiscal.filter(pl.col("Registro").is_in(lista_fiscal))
+        Fiscal = df_fiscal.filter(pl.col(cd.Registro).is_in(lista_fiscal))
         version_f = df_fiscal.select(pl.col(dfn.VERSAO))[0].item()
         df_assets_f = cv.get_remote_assets(dfn.EFDF)
 
@@ -213,12 +271,12 @@ def process(df_contribuicoes, df_fiscal):
 
 
         df_fisc_renomeado = Fiscal.with_columns(
-            pl.coalesce([pl.col("VL_BC_ICMS2"), pl.col("VL_BC_ICMS")]).alias("VL_BC_ICMS"),
-            pl.coalesce([pl.col("DT_DOC_INI"), pl.col("DT_DOC")]).alias("DT_DOC"),
-            pl.coalesce([pl.col("CHV_CTE"), pl.col("CHV_NFE")]).alias("CHV_NFE"),
-            pl.coalesce([pl.col("VL_ICMS2"), pl.col("VL_ICMS")]).alias("VL_ICMS"),
-            pl.coalesce([pl.col("VL_BC_ICMS_ST2"), pl.col("VL_BC_ICMS_ST")]).alias("VL_BC_ICMS_ST"),
-            pl.coalesce([pl.col("VL_ICMS_ST"), pl.col("VL_ICMS_ST2")]).alias("VL_ICMS_ST"),
-            pl.coalesce([pl.col("VL_IPI2"), pl.col("VL_IPI")]).alias("VL_IPI"))
+            pl.coalesce([pl.col("VL_BC_ICMS2"), pl.col(cd.VL_BC_ICMS)]).alias(cd.VL_BC_ICMS),
+            pl.coalesce([pl.col("DT_DOC_INI"), pl.col(cd.DT_DOC)]).alias(cd.DT_DOC),
+            pl.coalesce([pl.col("CHV_CTE"), pl.col(cd.CHV_NFE)]).alias(cd.CHV_NFE),
+            pl.coalesce([pl.col("VL_ICMS2"), pl.col(cd.VL_ICMS)]).alias(cd.VL_ICMS),
+            pl.coalesce([pl.col("VL_BC_ICMS_ST2"), pl.col(cd.VL_BC_ICMS_ST)]).alias(cd.VL_BC_ICMS_ST),
+            pl.coalesce([pl.col(cd.VL_ICMS_ST), pl.col("VL_ICMS_ST2")]).alias(cd.VL_ICMS_ST),
+            pl.coalesce([pl.col("VL_IPI2"), pl.col(cd.VL_IPI)]).alias(cd.VL_IPI))
         
         return df_fisc_renomeado, df_cont_renomeado 

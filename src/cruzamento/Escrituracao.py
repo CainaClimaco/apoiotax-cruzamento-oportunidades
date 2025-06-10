@@ -8,11 +8,15 @@ import cruzamento.empresa as em
 
 
 def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
+
     regex_list = None
+
     NFe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_e], field_list=cd.NFE[cd.CAMPOS_ESCRITURACAO])
+    
     NFe = NFe.with_columns(
                 pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False),
                 pl.col(cd.tpNF).cast(pl.Int32))
+    
     analise = an.analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
     
     Contribuicoes = (df_contribuicoes.select([dfn.REGISTRO, cd.COD_SIT, cd.CHV_NFE, dfn.PERIODO])

@@ -8,12 +8,19 @@ import cruzamento.dados_receita as dr
 
 
 def process_receita(inbound, df_contribuicoes, df_fiscal, self):
-        
-        xml_erro = dr.processXML(inbound,)
 
-        # NFe = df_nfe.unique(subset=[cd.nNF], keep="first")
+        NFe, xml_erro = dr.processXML(inbound)
 
-        # analise = an.analise(df_nfe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
+        analise = an.analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
+
+
+        df_empresa = pl.concat([
+                df_contribuicoes.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000'),
+                df_fiscal.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000'),
+                NFe.select([cd.NOME_EMIT, cd.CNPJ_EMIT])
+                ], how="diagonal")
+        empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
+
 
         df_situacao = pl.read_excel(
         source = cd.CAMINHO_COD_SIT,
@@ -24,10 +31,18 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self):
         engine = "openpyxl")
 
 
+        NFe = NFe.join(df_cfop, on=cd.CFOP, how='left')
+ 
+        NFe = NFe.drop_nulls(pl.col(cd.DESC_COD_SIT)).filter(pl.col(cd.SITUACAO) == "Autorizado o uso da NF-e")
+        NFe = NFe.with_columns(
+                (pl.col(cd.vProd) - pl.col(cd.vDesc) + pl.col(cd.vFrete) 
+                 + pl.col(cd.vSeg) + pl.col(cd.vOutro) - pl.col(cd.vICMSDeson)).alias("calc_confronto"))
+        
+
+
         Fiscal, Contribuicoes = dr.process(df_contribuicoes, df_fiscal)
 
 
-        
         Contribuicoes = Contribuicoes.select(dfn.PERIODO, dfn.REGISTRO, dfn.CNPJ, pl.col(cd.DT_DOC).str.strptime(pl.Date, format="%d%m%Y"), 
                                         cd.NUM_DOC, cd.COD_MOD, cd.IND_OPER, cd.IND_ESCRI, pl.col(cd.CFOP).cast(pl.Int64), 
                                         cd.COD_SIT, cd.CST, cd.ALIQ, cd.VL_ITEM, cd.CHV_NFE)
@@ -82,14 +97,5 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self):
                 ).drop("Descrição da Situação do Documento", "Data de Fim", "Data de Início", "COD_SIT_right")
         calculoConfronto_fiscal = (calculoConfronto_fiscal.filter(pl.col(cd.COD_SIT) == "00")
                                 ).drop_nulls(subset=[cd.CHV_NFE,"Descrição"]).unique() 
-        
-
-        df_empresa = pl.concat([
-                df_contribuicoes.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000'),
-                df_fiscal.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000')
-                # ,df_nfe.select([cd.NOME, cd.CNPJ])
-                ], how="diagonal")
-        empresa = em.empresa_cnpj(inbound, df_empresa)
-        
         
         # we.excel_receita(empresa, quebraContrib, calculoConfronto_fiscal, analise)

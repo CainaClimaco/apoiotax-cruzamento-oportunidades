@@ -11,14 +11,12 @@ def excel_escrituracao(self, empresa, escrituracao, analise):
     cruzamentos_file = os.path.join(root_directory, 'assets\\Template_Check SPED x XML_v5.xlsx')
     output_folder = self.global_params["output"]
     wb = eh.open_template(cruzamentos_file)
-    company = pl.DataFrame([empresa[1]])
+    company = pl.DataFrame([empresa])
 
     eh.dump_data_to_sheet(company, excel_thing = wb,sheet_name="Índice", write_header=False, starting_cell='B7')
     eh.dump_data_to_sheet(excel_thing=wb, data=escrituracao, starting_cell='B11', write_header=True, sheet_name="SPED x XML")
     eh.dump_data_to_sheet(excel_thing=wb, data=analise, starting_cell='B11', write_header=True, sheet_name="ARQUIVOS_PARA_ANALISE")
-    wb.save(output_folder + "\\" + empresa[1] + " Check SPED x XML " + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
-
-
+    wb.save(output_folder + "\\" + " Check SPED x XML " + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
 
 
 def excel_receita(self, empresa, Contribuicoes, Fiscal, Trimestral, Anual, analise):
