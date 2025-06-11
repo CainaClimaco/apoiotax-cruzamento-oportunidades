@@ -1,5 +1,6 @@
 import polars as pl
 import cruzamento.cruzamento_definition as cd
+import datatricks.io.file_definitions as fd
 import cruzamento.write_excel as we
 import cruzamento.file_reader as fr
 import cruzamento.analise as an
@@ -11,7 +12,11 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
 
         NFe, xml_erro = dr.processXML(inbound)
 
-        analise = an.analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
+        erro = an.count_arquivos(NFe, df_contribuicoes, df_fiscal, self)  
+        xml = an.filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
+        txt = an.filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
+
+        nProcessado = pl.concat([xml, txt, xml_erro, erro], how="diagonal")
 
 
         df_empresa = pl.concat([
@@ -34,19 +39,37 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
         NFe = NFe.join(df_cfop, on=cd.CFOP, how='left')
 
         NFe = NFe.with_columns(pl.col(cd.PERÍODO).dt.year().alias(cd.ANO))
- 
-        NFe = NFe.drop_nulls(pl.col(cd.DESCRICAO)).filter(pl.col(cd.SITUACAO) == "Autorizado o uso da NF-e")
         
         NFe = NFe.with_columns(
                 (pl.col(cd.vProd) - pl.col(cd.vDesc) + pl.col(cd.vFrete) 
                  + pl.col(cd.vSeg) + pl.col(cd.vOutro) - pl.col(cd.vICMSDeson)).alias(cd.CALC_CONFRONTO))
+        
+        nConsiderado = NFe.filter((pl.col(cd.DESCRICAO).is_null()) | (pl.col(cd.SITUACAO) != "Autorizado o uso da NF-e"))
+
+        nConsiderado = nConsiderado.with_columns([
+        pl.when(pl.col(cd.SITUACAO) == ("Autorizado o uso da NF-e"))
+            .then(pl.lit("CFOP/CST não aplicáveis"))
+        .otherwise(pl.lit("Nota cancelada"))
+        .alias(cd.MOTIVO)  
+    ])
+
+        duplicados = NFe.filter(pl.col(cd.CHV_NFE).is_duplicated())
+        duplicados = duplicados.with_columns([
+                pl.lit("Nota fiscal eletrônica (NF-e) duplicada").alias(cd.MOTIVO)
+        ])
+
+        nConsiderado = pl.concat([duplicados, nConsiderado])
+        nConsiderado = nConsiderado.select(pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
+                                           pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.MOTIVO), pl.col(cd.vProd),
+                                           pl.col(cd.vFrete), pl.col(cd.vSeg), pl.col(cd.vOutro), pl.col(cd.vDesc),
+                                           pl.col(cd.vICMSDeson), pl.col(cd.CALC_CONFRONTO))
 
         quebra_nfe = NFe.select(
                 pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.xMun_EMIT), pl.col(cd.xMun_DEST), pl.col(cd.CNPJ_EMIT),
                 pl.col(cd.NOME_EMIT), pl.col(cd.CNPJ_DEST), pl.col(cd.NOME_DEST), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
                 pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.vProd), pl.col(cd.vFrete), pl.col(cd.vSeg),
                 pl.col(cd.vOutro), pl.col(cd.vICMSDeson), pl.col(cd.vDesc), pl.col(cd.CALC_CONFRONTO)                
-        )
+        ).drop_nulls([pl.col(cd.nNF), pl.col(cd.DESCRICAO)]).filter(pl.col(cd.SITUACAO) == "Autorizado o uso da NF-e")
 
         Fiscal, Contribuicoes = dr.process(df_contribuicoes, df_fiscal)
 
@@ -121,4 +144,4 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 pl.col(cd.VL_BC_ICMS), pl.col(cd.VL_ICMS), pl.col(cd.VL_BC_ICMS_ST), pl.col(cd.VL_ICMS_ST), pl.col(cd.VL_IPI), pl.col(cd.CALC_CONFRONTO)
         )
         
-        we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, quebra_nfe, analise, projeto)
+        we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, quebra_nfe, nConsiderado, nProcessado, projeto)

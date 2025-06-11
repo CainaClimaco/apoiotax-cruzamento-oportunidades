@@ -68,6 +68,7 @@ nItem = "NItem"
 value = "value"
 ANO = "ANO"
 CALC_CONFRONTO = "Cálculo Confronto"
+MOTIVO = "Motivo"
 
 
 

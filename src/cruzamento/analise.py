@@ -72,7 +72,7 @@ def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
     count_qtd_txt = len(df_txt_contrib) + len(df_txt_fiscal) 
 
     if count_qtd_xml == 0 and count_qtd_txt == 0:
-        self.logger.error("Nenhum TXT SPED e XML NF-e encontrado. Encerrando execução.")
+        self.logger.error("ERRO: Nenhum TXT SPED e XML NF-e encontrado. Encerrando execução.")
         sys.exit()
     elif count_qtd_xml == 0:
         return pl.DataFrame({cd.status: ["Nenhum XML NF-e encontrado"]})
