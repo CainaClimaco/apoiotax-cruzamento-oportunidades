@@ -1,13 +1,13 @@
 import polars as pl
 import cruzamento.cruzamento_definition as cd
 import datatricks.io.file_definitions as fd
-import datatricks.sped.sped_definitions as dfn
+import cruzamento.write_excel as we
 import cruzamento.file_reader as fr
 import cruzamento.analise as an
 import cruzamento.empresa as em
 
 
-def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
+def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
 
     regex_list = None
 
@@ -19,25 +19,25 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
     
     analise = an.analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound)
     
-    Contribuicoes = (df_contribuicoes.select([dfn.REGISTRO, cd.COD_SIT, cd.CHV_NFE, dfn.PERIODO])
-                    ).filter(pl.col(dfn.REGISTRO) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
+    Contribuicoes = (df_contribuicoes.select([cd.Registro, cd.COD_SIT, cd.CHV_NFE, cd.PERÍODO])
+                    ).filter(pl.col(cd.Registro) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
                     ).filter(~pl.all_horizontal(pl.all().is_null()))
     
-    Fiscal = (df_fiscal.select([dfn.REGISTRO, cd.COD_SIT, cd.CHV_NFE, dfn.PERIODO])
-            ).filter(pl.col(dfn.REGISTRO) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
+    Fiscal = (df_fiscal.select([cd.Registro, cd.COD_SIT, cd.CHV_NFE, cd.PERÍODO])
+            ).filter(pl.col(cd.Registro) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
             ).filter(~pl.all_horizontal(pl.all().is_null()))
     
     NFe = NFe.unique(subset=[cd.ID], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
 
 
-    Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias("EFD CONTRIBUIÇÕES"))
-    Fiscal = Fiscal.with_columns(pl.lit("SIM").alias("EFD ICMS IPI"))
-    NFe = NFe.with_columns(pl.lit("SIM").alias("NFE"))
+    Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias(cd.EFD_CONTRIBUICOES))
+    Fiscal = Fiscal.with_columns(pl.lit("SIM").alias(cd.EFD_ICMS_IPI))
+    NFe = NFe.with_columns(pl.lit("SIM").alias(cd.NFe))
         
 
     df_empresa = pl.concat([
-        df_contribuicoes.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000'),
-        df_fiscal.select([cd.NOME, cd.CNPJ, dfn.REGISTRO]).filter(pl.col(dfn.REGISTRO) == '0000')
+        df_contribuicoes.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000'),
+        df_fiscal.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000')
     ])
     empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
 
@@ -50,25 +50,25 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
         .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 1))
             .then(pl.lit("Emissão Própria - Saída"))
         .otherwise(pl.lit("Terceiros - Sem Vínculo"))
-        .alias("EMISSÃO")  
+        .alias(cd.EMISSAO)  
     ])
 
 
     verificacao = pl.concat([
-        Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col(dfn.PERIODO), pl.col("EFD CONTRIBUIÇÕES"), pl.col(cd.COD_SIT).alias("COD_SIT_EFDC").cast(pl.Utf8)),
-        Fiscal.select(pl.col(cd.CHV_NFE),pl.col(dfn.PERIODO), pl.col("EFD ICMS IPI"), pl.col(cd.COD_SIT).alias("COD_SIT_EFDF").cast(pl.Utf8)),
-        tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col("NFE"), pl.col(cd.SITUACAO), pl.col("EMISSÃO"))
+        Contribuicoes.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col(cd.EFD_CONTRIBUICOES), pl.col(cd.COD_SIT).alias(cd.COD_SIT_EFDC).cast(pl.Utf8)),
+        Fiscal.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col(cd.EFD_ICMS_IPI), pl.col(cd.COD_SIT).alias(cd.COD_SIT_EFDF).cast(pl.Utf8)),
+        tratamento.select(pl.col(cd.CHV_NFE),pl.col(cd.PERÍODO), pl.col(cd.NFe), pl.col(cd.SITUACAO), pl.col(cd.EMISSAO))
         ], how="diagonal")
 
     verificacao = verificacao.group_by(cd.CHV_NFE).agg([
-        pl.col(dfn.PERIODO).dt.strftime("%d/%m/%Y").sort(nulls_last=True).first().alias("PERÍODO"),
-        pl.col("EFD CONTRIBUIÇÕES").sort(nulls_last=True).first().alias("EFD CONTRIBUIÇÕES"),
-        pl.col("COD_SIT_EFDC").sort(nulls_last=True).first().alias("COD_SIT_EFDC"),
-        pl.col("EFD ICMS IPI").sort(nulls_last=True).first().alias("EFD ICMS IPI"),
-        pl.col("COD_SIT_EFDF").sort(nulls_last=True).first().alias("COD_SIT_EFDF"),
-        pl.col("NFE").sort(nulls_last=True).first().alias("NFE"),
+        pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y").sort(nulls_last=True).first().alias("PERÍODO"),
+        pl.col(cd.EFD_CONTRIBUICOES).sort(nulls_last=True).first().alias(cd.EFD_CONTRIBUICOES),
+        pl.col(cd.COD_SIT_EFDC).sort(nulls_last=True).first().alias(cd.COD_SIT_EFDC),
+        pl.col(cd.EFD_ICMS_IPI).sort(nulls_last=True).first().alias(cd.EFD_ICMS_IPI),
+        pl.col(cd.COD_SIT_EFDF).sort(nulls_last=True).first().alias(cd.COD_SIT_EFDF),
+        pl.col(cd.NFe).sort(nulls_last=True).first().alias(cd.NFe),
         pl.col(cd.SITUACAO).sort(nulls_last=True).first().alias(cd.SITUACAO),
-        pl.col("EMISSÃO").sort(nulls_last=True).first().alias("EMISSÃO")
+        pl.col(cd.EMISSAO).sort(nulls_last=True).first().alias(cd.EMISSAO)
     ])
         
 
@@ -76,12 +76,12 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self):
         source = cd.CAMINHO_SITUACAO,
         engine = "openpyxl")
     
-    situacao = verificacao.join(df_situacao, left_on="COD_SIT_EFDC", right_on="Código", how="left"
-                                ).join(df_situacao, left_on="COD_SIT_EFDF", right_on="Código", how="left")
+    situacao = verificacao.join(df_situacao, left_on=cd.COD_SIT_EFDC, right_on=cd.CODIGO, how="left"
+                                ).join(df_situacao, left_on=cd.COD_SIT_EFDF, right_on=cd.CODIGO, how="left")
 
 
     escrituracao = situacao.sort('PERÍODO', cd.CHV_NFE )
 
-    return(empresa, escrituracao, analise)
+    we.excel_escrituracao(self, empresa, escrituracao, analise, projeto)
 
 

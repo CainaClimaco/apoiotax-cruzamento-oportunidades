@@ -41,8 +41,6 @@ def leitor_sped(inbound, obrigacao, sped_type, padrao, definition):
             df_padrao = df_padrao.with_columns([
                 pl.when(pl.col("Registro").eq("0000"))
                 .then(pl.col(definition[cd.NOME])).otherwise(pl.lit(None)).alias(cd.NOME),
-                pl.when(pl.col("Registro").eq("0000"))
-                .then(pl.col(definition[cd.CNPJ])).otherwise(pl.lit(None)).alias(cd.CNPJ),
                 pl.when(pl.col("Registro").eq("C100"))
                 .then(pl.col(definition[cd.COD_SIT])).otherwise(pl.lit(None)).alias(cd.COD_SIT),
                 pl.when(pl.col("Registro").eq("C100")) 

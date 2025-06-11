@@ -1,5 +1,5 @@
 NOME = 'NOME'
-CNPJ = 'CNPJ'
+CNPJ = 'Quebra CNPJ'
 COD_SIT = 'COD_SIT'
 COD_PART = 'COD_PART'
 CHV_NFE = 'CHV_NFE'
@@ -12,16 +12,20 @@ Registro = 'Registro'
 file_name = "NOME DO ARQUIVO"
 processamento = "PROCESSAMENTO"
 status = "STATUS ARQUIVO"
-DESC_COD_SIT = "Descrição"
+DESCRICAO = "Descrição"
 
 
 CAMPOS_ESCRITURACAO = "CAMPOS_E"
-COD_SIT_EFDC = "Código"
+COD_SIT_EFDC = "COD_SIT_EFDC"
 COD_SIT_EFDF = "COD_SIT_EFDF"
 DESC_COD_SIT_EFDF = "DESC_COD_SIT_EFDF"
 SITUACAO = 'SITUAÇÃO NFE'
 tpNF = 'tpNF'
 rename_e = "rename_e"
+EFD_CONTRIBUICOES = "EFD CONTRIBUIÇÕES"
+EFD_ICMS_IPI = "EFD ICMS IPI"
+EMISSAO = "EMISSÃO"
+CODIGO = "Código"
 
 
 CAMPOS_RECEITA = "CAMPOS_R"
@@ -62,10 +66,12 @@ variable = "variable"
 novoCampo = "novo_campo"
 nItem = "NItem"
 value = "value"
+ANO = "ANO"
+CALC_CONFRONTO = "Cálculo Confronto"
 
 
 
-escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURAÇÃO)'
+escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURACAO)'
 receita = 'EFD_F_X_EFD_C_X_NF-E_(RECEITA)'
 CAMINHO_SITUACAO = 'src\\assets\\Situacao_NF-e.xlsx'
 CAMINHO_CFOP = 'src\\assets\\XML_CFOPs.xlsx'
@@ -74,6 +80,7 @@ json_path = "src\\assets\\registros.json"
 status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
 status_nfe = "Nota fiscal eletrônica (NF-e) duplicada"
+NFe = "NFE"
 
 
 EFDC = {NOME: 'field_7',
@@ -95,16 +102,7 @@ PADRAO_EFDF = {
         Registro: 'REG'
 }
 
-NFE = { 
-        rename_e: 
-        {PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
-        ID: 'nfeProc_NFe_infNFe_Id',
-        CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
-        CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
-        SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
-        tpNF: 'nfeProc_NFe_infNFe_ide_tpNF',
-        CHV_NFE:'nfeProc_protNFe_infProt_chNFe'},
-
+NFE = {
         CAMPOS_ESCRITURACAO:
         ['nfeProc_NFe_infNFe_ide_dhEmi', 
         'nfeProc_NFe_infNFe_Id', 
@@ -114,25 +112,14 @@ NFE = {
         'nfeProc_NFe_infNFe_ide_tpNF', 
         'nfeProc_protNFe_infProt_chNFe'],
 
-        rename_r:{
-        PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
-        CHV_NFE:'nfeProc_protNFe_infProt_chNFe',
-        nNF: 'nfeProc_NFe_infNFe_ide_nNF',
+        rename_e: 
+        {PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
+        ID: 'nfeProc_NFe_infNFe_Id',
         CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
-        NOME_EMIT: 'nfeProc_NFe_infNFe_emit_xNome',
         CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
         SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
-        xMun_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xMun',
-        xPais_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xPais',
-        xMun_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xMun',
-        xPais_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xPais',
-        vICMSDeson: 'nfeProc_NFe_infNFe_total_ICMSTot_vICMSDeson',
-        vProd:'nfeProc_NFe_infNFe_total_ICMSTot_vProd',
-        vFrete:'nfeProc_NFe_infNFe_total_ICMSTot_vFrete',
-        vSeg:'nfeProc_NFe_infNFe_total_ICMSTot_vSeg',
-        vDesc:'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
-        vOutro:'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
-        },
+        tpNF: 'nfeProc_NFe_infNFe_ide_tpNF',
+        CHV_NFE:'nfeProc_protNFe_infProt_chNFe'},
 
         CAMPOS_RECEITA:
         ['nfeProc_NFe_infNFe_ide_dhEmi', 
@@ -140,7 +127,8 @@ NFE = {
         'nfeProc_NFe_infNFe_ide_nNF', 
         'nfeProc_NFe_infNFe_emit_CNPJ',
         'nfeProc_NFe_infNFe_emit_xNome',
-        'nfeProc_NFe_infNFe_dest_CNPJ', 
+        'nfeProc_NFe_infNFe_dest_CNPJ',
+        'nfeProc_NFe_infNFe_dest_xNome', 
         'nfeProc_protNFe_infProt_xMotivo', 
         'nfeProc_NFe_infNFe_emit_enderEmit_xMun',
         'nfeProc_NFe_infNFe_emit_enderEmit_xPais',
@@ -152,7 +140,28 @@ NFE = {
         'nfeProc_NFe_infNFe_total_ICMSTot_vSeg',
         'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
         'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
-        ]}
+        ],
+
+        rename_r:{
+        PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
+        CHV_NFE:'nfeProc_protNFe_infProt_chNFe',
+        nNF: 'nfeProc_NFe_infNFe_ide_nNF',
+        CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
+        NOME_EMIT: 'nfeProc_NFe_infNFe_emit_xNome',
+        CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
+        NOME_DEST: 'nfeProc_NFe_infNFe_dest_xNome',
+        SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
+        xMun_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xMun',
+        xPais_EMIT: 'nfeProc_NFe_infNFe_emit_enderEmit_xPais',
+        xMun_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xMun',
+        xPais_DEST:'nfeProc_NFe_infNFe_dest_enderDest_xPais',
+        vICMSDeson: 'nfeProc_NFe_infNFe_total_ICMSTot_vICMSDeson',
+        vProd:'nfeProc_NFe_infNFe_total_ICMSTot_vProd',
+        vFrete:'nfeProc_NFe_infNFe_total_ICMSTot_vFrete',
+        vSeg:'nfeProc_NFe_infNFe_total_ICMSTot_vSeg',
+        vDesc:'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
+        vOutro:'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
+        }}
 
 C_re_C100 = {
         COD_PART: 'field_8'

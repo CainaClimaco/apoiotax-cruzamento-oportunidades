@@ -58,6 +58,7 @@ def processXML(inbound):
     r'^(nfeProc_NFe_infNFe_det_)(\d+_)*prod_vProd$']
 
     df_nfe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_r], field_list=cd.NFE[cd.CAMPOS_RECEITA])
+
     df_long = df_nfe.select(pl.col(cd.CHV_NFE), pl.col(*regex_list)) 
 
     df_long = df_long.unpivot(index=[cd.CHV_NFE])
@@ -68,13 +69,14 @@ def processXML(inbound):
         .otherwise(
         pl.col(cd.variable).str.replace(r"(det_)", r"\g<1>1_")))
     
-
     df_long = df_long.with_columns(
         pl.col(cd.variable).str.extract(r"_(\d+)_", 1).cast(pl.Int64).alias(cd.nItem),
         pl.col(cd.variable).str.extract(r"(vProd|CFOP)$", 1).alias(cd.novoCampo))
 
-
     df_long= df_long.pivot(cd.novoCampo, index=[cd.CHV_NFE, cd.nItem], values=cd.value)
+
+    df_long = df_long.with_columns(pl.col(cd.vProd).cast(pl.Float64).fill_null(0)).drop_nulls(cd.CFOP)
+
     df_long = df_long.group_by([cd.CFOP, cd.CHV_NFE]).agg(pl.col(cd.vProd).sum())
 
     NFe = df_nfe.join(df_long, on= cd.CHV_NFE, how='full').drop(pl.col(*regex_list))
@@ -84,14 +86,13 @@ def processXML(inbound):
         pl.col(cd.vProd_Right).cast(pl.Float64),
         pl.col(cd.vFrete).cast(pl.Float64),
         pl.col(cd.vSeg).cast(pl.Float64),
-        pl.col(cd.vDesc).cast(pl.Float64),
+        pl.col(cd.vDesc).fill_null(0.0).cast(pl.Float64),
         pl.col(cd.vOutro).cast(pl.Float64),
         pl.col(cd.vICMSDeson).cast(pl.Float64),
         pl.col(cd.PERÍODO).str.slice(0,10).str.strptime(pl.Date, strict=False)
     )
-
-    NFe = NFe.with_columns([
     
+    NFe = NFe.with_columns([
     pl.when(pl.col(cd.xMun_DEST) != "Exterior")
     .then(cd.xMun_DEST)
     .otherwise (pl.col(cd.xPais_DEST))
@@ -99,35 +100,34 @@ def processXML(inbound):
 
     pl.when(pl.col(cd.xMun_EMIT) != "Exterior")
     .then(cd.xMun_EMIT)
-    .otherwise (pl.col(cd.xPais_EMIT))
+    .otherwise (cd.xPais_EMIT)
     .alias(cd.xMun_EMIT), 
 
     pl.when(pl.col(cd.vProd) == 0)
-      .then(0.0)
-      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vFrete)).round(2))
+      .then(0)
+      .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vFrete)))
       .alias(cd.vFrete),
 
     pl.when(pl.col(cd.vProd) == 0)
-      .then(0.0)
+      .then(pl.col(cd.vSeg) == 0)
       .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vSeg)).round(2))
       .alias(cd.vSeg),
 
     pl.when(pl.col(cd.vProd) == 0)
-      .then(0.0)
+      .then(0)
       .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vDesc)).round(2))
       .alias(cd.vDesc),
     
     pl.when(pl.col(cd.vProd) == 0)
-      .then(0.0)
+      .then(0)
       .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vOutro)).round(2))
       .alias(cd.vOutro),
 
     pl.when(pl.col(cd.vProd) == 0)
-      .then(0.0)
+      .then(0)
       .otherwise((pl.col(cd.vProd) / pl.col(cd.vProd_Right) * pl.col(cd.vICMSDeson)).round(2))
       .alias(cd.vICMSDeson)
     ])
-
     return NFe, xml_erro
         
 

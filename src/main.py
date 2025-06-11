@@ -2,7 +2,6 @@ import os
 import sys
 import shutil
 import cruzamento.Receita as re
-import cruzamento.write_excel as we
 import cruzamento.Escrituracao as es
 import datatricks.io.file_definitions as fd
 import cruzamento.cruzamento_definition as cd
@@ -10,7 +9,6 @@ import datatricks.sped.sped_definitions as dfn
 import cruzamento.file_reader as fr
 import datatricks.io.file_helper as fh
 from datatricks.commander.prompt_commander import Commander
-import cruzamento.write_excel as we
 
 
 class Sped_cruzamento(Commander):
@@ -18,7 +16,8 @@ class Sped_cruzamento(Commander):
         self.logger.info("Starting application.")
         inbound = self.get_incomming_files()
         inbound = fh.get_sped_filters(inbound)
-        operation = self.global_params["form_Tipo"]        
+        operation = self.global_params["form_Tipo"]
+        projeto = self.global_params["form_Solicitação"]
 
 
         df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.PADRAO_EFDC, cd.EFDC)
@@ -27,11 +26,10 @@ class Sped_cruzamento(Commander):
 
         match operation.upper():
             case cd.escrituracao:
-                empresa, escrituracao, analise = es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self)
-                we.excel_escrituracao(self, empresa, escrituracao, analise)
+                es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto)
                 
             case cd.receita:
-                re.process_receita(inbound,df_contribuicoes, df_fiscal, self)
+                re.process_receita(inbound,df_contribuicoes, df_fiscal, self, projeto)
 
 
 if __name__ == "__main__":
