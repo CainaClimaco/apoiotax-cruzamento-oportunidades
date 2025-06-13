@@ -83,6 +83,7 @@ def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
     
     
 def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
+    
     erro = count_arquivos(NFe, df_contribuicoes, df_fiscal, self)        
     xml = filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
     txt = filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
@@ -92,3 +93,26 @@ def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
     analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
     
     return analise
+
+
+def nConsiderado (NFe):
+
+        nConsiderado = NFe.filter((pl.col(cd.DESCRICAO).is_null()) | (pl.col(cd.SITUACAO) != "Autorizado o uso da NF-e"))
+
+        nConsiderado = nConsiderado.with_columns([
+            pl.when(pl.col(cd.SITUACAO) == ("Autorizado o uso da NF-e"))
+                .then(pl.lit("CFOP/CST não aplicáveis"))
+            .otherwise(pl.lit("Nota cancelada"))
+            .alias(cd.MOTIVO)  
+        ])
+
+        duplicados = NFe.filter(pl.col(cd.CHV_NFE).is_duplicated())
+        duplicados = duplicados.with_columns([
+                    pl.lit("Nota fiscal eletrônica (NF-e) duplicada").alias(cd.MOTIVO)
+        ])
+
+        nConsiderado = pl.concat([duplicados, nConsiderado])
+        nConsiderado = nConsiderado.select(pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
+                                            pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.MOTIVO), pl.col(cd.vProd),
+                                            pl.col(cd.vFrete), pl.col(cd.vSeg), pl.col(cd.vOutro), pl.col(cd.vDesc),
+                                            pl.col(cd.vICMSDeson), pl.col(cd.CALC_CONFRONTO), pl.col(cd.ANO))

@@ -15,8 +15,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
         erro = an.count_arquivos(NFe, df_contribuicoes, df_fiscal, self)  
         xml = an.filtrar_fora_do_padrao(inbound, '.xml', pl.col(fd.IS_NFE), cd.status_xml)
         txt = an.filtrar_fora_do_padrao(inbound, '.txt', pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF), cd.status_txt)
-
-        nProcessado = pl.concat([xml, txt, xml_erro, erro], how="diagonal")
+        nProcessado = pl.concat([xml, txt, xml_erro, erro], how="diagonal").drop_nulls()
 
 
         df_empresa = pl.concat([
@@ -44,31 +43,13 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 (pl.col(cd.vProd) - pl.col(cd.vDesc) + pl.col(cd.vFrete) 
                  + pl.col(cd.vSeg) + pl.col(cd.vOutro) - pl.col(cd.vICMSDeson)).alias(cd.CALC_CONFRONTO))
         
-        nConsiderado = NFe.filter((pl.col(cd.DESCRICAO).is_null()) | (pl.col(cd.SITUACAO) != "Autorizado o uso da NF-e"))
-
-        nConsiderado = nConsiderado.with_columns([
-        pl.when(pl.col(cd.SITUACAO) == ("Autorizado o uso da NF-e"))
-            .then(pl.lit("CFOP/CST não aplicáveis"))
-        .otherwise(pl.lit("Nota cancelada"))
-        .alias(cd.MOTIVO)  
-    ])
-
-        duplicados = NFe.filter(pl.col(cd.CHV_NFE).is_duplicated())
-        duplicados = duplicados.with_columns([
-                pl.lit("Nota fiscal eletrônica (NF-e) duplicada").alias(cd.MOTIVO)
-        ])
-
-        nConsiderado = pl.concat([duplicados, nConsiderado])
-        nConsiderado = nConsiderado.select(pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
-                                           pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.MOTIVO), pl.col(cd.vProd),
-                                           pl.col(cd.vFrete), pl.col(cd.vSeg), pl.col(cd.vOutro), pl.col(cd.vDesc),
-                                           pl.col(cd.vICMSDeson), pl.col(cd.CALC_CONFRONTO))
+        nConsiderado = an.nConsiderado(NFe)
 
         quebra_nfe = NFe.select(
                 pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.xMun_EMIT), pl.col(cd.xMun_DEST), pl.col(cd.CNPJ_EMIT),
                 pl.col(cd.NOME_EMIT), pl.col(cd.CNPJ_DEST), pl.col(cd.NOME_DEST), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
                 pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.vProd), pl.col(cd.vFrete), pl.col(cd.vSeg),
-                pl.col(cd.vOutro), pl.col(cd.vICMSDeson), pl.col(cd.vDesc), pl.col(cd.CALC_CONFRONTO)                
+                pl.col(cd.vOutro), pl.col(cd.vICMSDeson), pl.col(cd.vDesc), pl.col(cd.CALC_CONFRONTO),pl.col(cd.ANO)                
         ).drop_nulls([pl.col(cd.nNF), pl.col(cd.DESCRICAO)]).filter(pl.col(cd.SITUACAO) == "Autorizado o uso da NF-e")
 
         Fiscal, Contribuicoes = dr.process(df_contribuicoes, df_fiscal)
@@ -103,8 +84,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
                 pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC), pl.col(cd.CST), 
                 pl.col(cd.CFOP), pl.col(cd.DESCRICAO), pl.col(cd.COD_SIT), pl.col(cd.COD_MOD), pl.col(cd.IND_OPER), 
-                pl.col(cd.IND_ESCRI), pl.col(cd.VL_ITEM)
-        )
+                pl.col(cd.IND_ESCRI), pl.col(cd.VL_ITEM), pl.col(cd.ANO))
 
 
         Fiscal = Fiscal.select(cd.PERÍODO, cd.Registro, cd.CNPJ, cd.NUM_DOC, cd.CHV_NFE, pl.col(cd.DT_DOC).str.strptime(pl.Date, format="%d%m%Y"), 
@@ -140,8 +120,8 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
         quebra_fiscal = calculoConfronto_fiscal.select(
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
                 pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC), pl.col(cd.CST_ICMS), 
-                pl.col(cd.CFOP), pl.col(cd.DESCRICAO), pl.col(cd.COD_SIT), pl.col(cd.ALIQ_ICMS), pl.col(cd.VL_OPR), 
-                pl.col(cd.VL_BC_ICMS), pl.col(cd.VL_ICMS), pl.col(cd.VL_BC_ICMS_ST), pl.col(cd.VL_ICMS_ST), pl.col(cd.VL_IPI), pl.col(cd.CALC_CONFRONTO)
+                pl.col(cd.CFOP), pl.col(cd.DESCRICAO), pl.col(cd.COD_SIT), pl.col(cd.ALIQ_ICMS), pl.col(cd.VL_OPR),  pl.col(cd.VL_BC_ICMS), 
+                pl.col(cd.VL_ICMS), pl.col(cd.VL_BC_ICMS_ST), pl.col(cd.VL_ICMS_ST), pl.col(cd.VL_IPI), pl.col(cd.CALC_CONFRONTO), pl.col(cd.ANO)
         )
         
         we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, quebra_nfe, nConsiderado, nProcessado, projeto)

@@ -70,6 +70,7 @@ def find_key(str_content, regex_list, keys):
     matching = find_matching_fields(regex_list, [dict_xml])
     for match in matching:
         content[match] = dict_xml.get(match, None)
+
     return content
 
 def file_content(df):
@@ -82,9 +83,24 @@ def file_content(df):
 def extract_columns(df, regex_list, field_list):
     df = df.with_columns(pl.col(dt_fd.XML_CONTENT).str.replace('"', "").alias(dt_fd.XML_CONTENT))
     df = df.select(dt_fd.XML_CONTENT, 'full_Path', 'file_Name')
-    df = df.with_columns(pl.col(dt_fd.XML_CONTENT).map_elements(lambda x: find_key(x, regex_list if regex_list is not None else [], field_list), return_dtype=pl.Struct).alias('new_columns'))
-    df = df.unnest('new_columns')
+    
+    extracted_data = []
+    all_keys = set(field_list)
+    for row in df.select(dt_fd.XML_CONTENT).to_series():
+        data = find_key(row, regex_list, field_list)
+        extracted_data.append(data)
+        all_keys.update(data.keys())
+    all_keys = sorted(all_keys)
+    
+    filled_data = []
+    for row in extracted_data:
+        filled_row = {key: row.get(key, None) for key in all_keys}
+        filled_data.append(filled_row)
+    
+    for key in all_keys:
+        df = df.with_columns(pl.Series(name=key, values=[row[key] for row in filled_data]))
     return df
+
 
 
 def conversor_xml(inbound, regex_list=[], field_list=[]):

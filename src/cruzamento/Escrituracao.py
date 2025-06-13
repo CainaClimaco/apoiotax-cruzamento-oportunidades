@@ -9,7 +9,7 @@ import cruzamento.empresa as em
 
 def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
 
-    regex_list = None
+    regex_list = []
 
     NFe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_e], field_list=cd.NFE[cd.CAMPOS_ESCRITURACAO])
     
