@@ -58,7 +58,9 @@ def processXML(inbound):
     r'^(nfeProc_NFe_infNFe_det_)(\d+_)*prod_vProd$']
 
     df_nfe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_r], field_list=cd.NFE[cd.CAMPOS_RECEITA])
-
+    df_nfe = df_nfe.with_columns(
+        pl.col(cd.CHV_NFE).str.tail(44).alias(cd.CHV_NFE)
+    )
     df_long = df_nfe.select(pl.col(cd.CHV_NFE), pl.col(*regex_list)) 
 
     df_long = df_long.unpivot(index=[cd.CHV_NFE])
@@ -67,15 +69,16 @@ def processXML(inbound):
         pl.when(pl.col(cd.variable).str.contains(r"_\d+_"))
         .then(pl.col(cd.variable))
         .otherwise(
-        pl.col(cd.variable).str.replace(r"(det_)", r"\g<1>1_")))
+        pl.col(cd.variable).str.replace(r"(det_)", "det_1_")))
     
     df_long = df_long.with_columns(
         pl.col(cd.variable).str.extract(r"_(\d+)_", 1).cast(pl.Int64).alias(cd.nItem),
         pl.col(cd.variable).str.extract(r"(vProd|CFOP)$", 1).alias(cd.novoCampo))
-
+    
+    df_long = df_long.drop_nulls(cd.value)
     df_long= df_long.pivot(cd.novoCampo, index=[cd.CHV_NFE, cd.nItem], values=cd.value)
 
-    df_long = df_long.with_columns(pl.col(cd.vProd).cast(pl.Float64).fill_null(0)).drop_nulls(cd.CFOP)
+    df_long = df_long.with_columns(pl.col(cd.vProd).cast(pl.Float64).fill_null(0))
 
     df_long = df_long.group_by([cd.CFOP, cd.CHV_NFE]).agg(pl.col(cd.vProd).sum())
 
@@ -204,7 +207,7 @@ def process(df_contribuicoes, df_fiscal):
         
         df_cont_renomeado = Contribuicoes.with_columns(
             pl.coalesce([pl.col(cd.VL_ITEM), pl.col("VL_REC_COMP"), pl.col("VL_REC_CAIXA"), pl.col("VL_TOT_REC"), 
-                         pl.col("VL_BRT"), pl.col("VL_DOC"), pl.col("VL_OPER"), pl.col("VL_OPR") ]).alias(cd.VL_ITEM),
+                         pl.col("VL_BRT"), pl.col("VL_DOC"), pl.col("VL_OPER"), pl.col("VL_OPR") ]).alias(cd.VL_ITEM).str.replace(",", ".").cast(pl.Float64),
             pl.coalesce([pl.col("CST_COFINS"), pl.col("CST_PIS")]).alias(cd.CST),
             pl.coalesce([pl.col("DT_OPER"), pl.col("DT_REF"), pl.col("DT_DOC_INI"), pl.col(cd.DT_DOC)]).alias(cd.DT_DOC),
             pl.coalesce([pl.col("NUM_DOC_INI"), pl.col(cd.NUM_DOC)]).alias(cd.NUM_DOC),

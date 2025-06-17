@@ -8,7 +8,7 @@ def empresa_cnpj(inbound, df):
         empresa = ""
         cnpj = ""
     else:
-        empresaCNPJ = df.unique(subset=[cd.CNPJ], keep="first")
+        empresaCNPJ = df.select(pl.col(cd.CNPJ), pl.col(cd.NOME))
         empresa = (empresaCNPJ.select([cd.NOME]).item(0,0))
         cnpj = (empresaCNPJ.select([cd.CNPJ]).item(0,0))
         

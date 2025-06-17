@@ -20,7 +20,7 @@ def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
     wb.save(output_folder + "\\" + "1. Apter_" + projeto +   " - Check SPED x XML_" +  datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
 
 
-def excel_receita(self, empresa, Contribuicoes, Fiscal, NFE, nConsiderada, analise, projeto):
+def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada, analise, projeto):
     directory = os.path.dirname(os.path.abspath(__file__))
     root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]
@@ -52,6 +52,20 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, NFE, nConsiderada, anali
             eh.dump_data_to_sheet(company, excel_thing = wb,sheet_name="ÍNDICE", write_header=False, starting_cell='B6')
             eh.dump_data_to_sheet(excel_thing=wb, data=contrib, starting_cell='B12', write_header=False, sheet_name="EFD CONTRIBUICOES")
             wb.save(output_folder + "\\" + "3.Apter_EFD_Contribuições_" + str(ano) + "_" + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
+    
+    
+    if Notas.height > 0:
+        anos = Notas.select(pl.col(cd.ANO).unique()).to_series().to_list()
+        for ano in anos:
+            notas = Notas.filter(pl.col(cd.ANO) == ano)
+            notas = notas.drop(cd.ANO)
+            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_XML.xlsx')
+            wb = eh.open_template(cruzamentos_file)
+            company = pl.DataFrame([empresa])
+
+            eh.dump_data_to_sheet(excel_thing = wb, data= company, starting_cell='B6', write_header=False, sheet_name="ÍNDICE")
+            eh.dump_data_to_sheet(excel_thing=wb, data=Notas, starting_cell='B12', write_header=False, sheet_name="XML")
+            wb.save(output_folder + "\\" + "5.Apter_XML_" + str(ano) + "_" + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
 
 
     if NFE.height > 0:
@@ -77,7 +91,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, NFE, nConsiderada, anali
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])
 
-        eh.dump_data_to_sheet(company, excel_thing = wb,sheet_name="ÍNDICE", write_header=False, starting_cell='B6')
+        eh.dump_data_to_sheet(excel_thing = wb, data= company, starting_cell='B6', write_header=False, sheet_name="ÍNDICE")
         eh.dump_data_to_sheet(excel_thing=wb, data=nConsid, starting_cell='B12', write_header=False, sheet_name="XML - N_CONSIDERADOS")
         wb.save(output_folder + "\\" + "6. Apter_Não_Considerados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
@@ -87,7 +101,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, NFE, nConsiderada, anali
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])
 
-        eh.dump_data_to_sheet(company, excel_thing = wb,sheet_name="ÍNDICE", write_header=False, starting_cell='B6')
+        eh.dump_data_to_sheet(excel_thing = wb, data= company, starting_cell='B6', write_header=False, sheet_name="ÍNDICE")
         eh.dump_data_to_sheet(excel_thing=wb, data=analise, starting_cell='B12', write_header=False, sheet_name="ARQUIVOS_PARA_ANALISE")
         wb.save(output_folder + "\\" + "7.Apter_Não_Processados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     

@@ -13,6 +13,8 @@ file_name = "NOME DO ARQUIVO"
 processamento = "PROCESSAMENTO"
 status = "STATUS ARQUIVO"
 DESCRICAO = "Descrição"
+VL_NFE = "calc_nfe"
+VL_EFD_F = "calc_fiscal"
 
 
 CAMPOS_ESCRITURACAO = "CAMPOS_E"
@@ -50,7 +52,6 @@ COD_MOD="COD_MOD"
 IND_OPER="IND_OPER"
 IND_ESCRI="IND_ESCRI"
 nNF = "nNF"
-NOME_EMIT = "NOME_EMIT"
 xPais_DEST = "xPais_DEST"
 xMun_DEST = "xMun_DEST"
 xPais_EMIT = "xPais_EMIT"
@@ -67,8 +68,11 @@ novoCampo = "novo_campo"
 nItem = "NItem"
 value = "value"
 ANO = "ANO"
+MES = "MES"
 CALC_CONFRONTO = "Cálculo Confronto"
 MOTIVO = "Motivo"
+COD_SIT_DOC = "Código da Situação do Documento"
+DESC_DOC = "Descrição da Situação do Documento"
 
 
 
@@ -124,7 +128,7 @@ NFE = {
 
         CAMPOS_RECEITA:
         ['nfeProc_NFe_infNFe_ide_dhEmi', 
-        'nfeProc_protNFe_infProt_chNFe',
+        'nfeProc_NFe_infNFe_Id',
         'nfeProc_NFe_infNFe_ide_nNF', 
         'nfeProc_NFe_infNFe_emit_CNPJ',
         'nfeProc_NFe_infNFe_emit_xNome',
@@ -145,10 +149,10 @@ NFE = {
 
         rename_r:{
         PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
-        CHV_NFE:'nfeProc_protNFe_infProt_chNFe',
+        CHV_NFE: 'nfeProc_NFe_infNFe_Id',
         nNF: 'nfeProc_NFe_infNFe_ide_nNF',
-        CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
-        NOME_EMIT: 'nfeProc_NFe_infNFe_emit_xNome',
+        CNPJ: 'nfeProc_NFe_infNFe_emit_CNPJ',
+        NOME: 'nfeProc_NFe_infNFe_emit_xNome',
         CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
         NOME_DEST: 'nfeProc_NFe_infNFe_dest_xNome',
         SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
