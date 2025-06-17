@@ -194,6 +194,5 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 quebra_nfe.select([cd.NOME, cd.CNPJ])
                 ], how="diagonal")
         empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
-
         
-        # we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, Notas, quebra_nfe, nConsiderado, nProcessado, Analico, projeto)
+        # we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, Notas, quebra_nfe, nConsiderado, nProcessado, Analitico, projeto)

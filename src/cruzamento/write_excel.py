@@ -20,7 +20,7 @@ def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
     wb.save(output_folder + "\\" + "1. Apter_" + projeto +   " - Check SPED x XML_" +  datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
 
 
-def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada, analise, projeto):
+def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada, nProcessado, Analitico, projeto):
     directory = os.path.dirname(os.path.abspath(__file__))
     root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]
@@ -96,12 +96,12 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         wb.save(output_folder + "\\" + "6. Apter_Não_Considerados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
 
-    if analise is not None and analise.height > 0:
+    if nProcessado is not None and nProcessado.height > 0:
         cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_N_PROCESSADOS.xlsx')
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])
 
         eh.dump_data_to_sheet(excel_thing = wb, data= company, starting_cell='B6', write_header=False, sheet_name="ÍNDICE")
-        eh.dump_data_to_sheet(excel_thing=wb, data=analise, starting_cell='B12', write_header=False, sheet_name="ARQUIVOS_PARA_ANALISE")
+        eh.dump_data_to_sheet(excel_thing=wb, data=nProcessado, starting_cell='B12', write_header=False, sheet_name="ARQUIVOS_PARA_ANALISE")
         wb.save(output_folder + "\\" + "7.Apter_Não_Processados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
