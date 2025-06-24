@@ -1,6 +1,5 @@
 import os
 import sys
-import shutil
 import cruzamento.Receita as re
 import cruzamento.Escrituracao as es
 import datatricks.io.file_definitions as fd
@@ -33,8 +32,6 @@ class Sped_cruzamento(Commander):
 
 
 if __name__ == "__main__":
-    if os.path.exists(r'C:\Projetos\projetos\Dados\base_cruzamentos\output'):
-        shutil.rmtree(r'C:\Projetos\projetos\Dados\base_cruzamentos\output')
     cmd = Sped_cruzamento(app = 'Sped Cruzamento', path=os.path.abspath(__file__), args=sys.argv)
     cmd.process()
     del(cmd)

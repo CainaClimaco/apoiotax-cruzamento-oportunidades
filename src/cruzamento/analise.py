@@ -97,14 +97,19 @@ def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
 
 def nConsiderado (NFe):
 
-    nConsiderado = NFe.filter((pl.col(cd.DESCRICAO).is_null()) | (pl.col(cd.SITUACAO) != "Autorizado o uso da NF-e"))
+    nAplicavel = NFe.filter(pl.col(cd.SITUACAO).ne_missing("Autorizado o uso da NF-e"))
+    
+    cancelada = NFe.filter(pl.col(cd.DESCRICAO).is_null())
+
+    nConsiderado = pl.concat([nAplicavel, cancelada]).unique()
+    
     nConsiderado = nConsiderado.with_columns([
         pl.when(pl.col(cd.SITUACAO) == ("Autorizado o uso da NF-e"))
         .then(pl.lit("CFOP/CST não aplicáveis"))
         .otherwise(pl.lit("Nota cancelada"))
         .alias(cd.MOTIVO)])
 
-    duplicados = NFe.filter(pl.col(cd.CHV_NFE).is_duplicated())
+    duplicados = NFe.filter(NFe.is_duplicated())
     duplicados = duplicados.with_columns([
         pl.lit("Nota fiscal eletrônica (NF-e) duplicada").alias(cd.MOTIVO)])
 
