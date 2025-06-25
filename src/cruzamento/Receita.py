@@ -208,11 +208,11 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 .when(pl.col(cd.MES).is_in([10, 11, 12]))
                         .then(pl.lit("4º trimestre"))
                 .otherwise(pl.lit("0"))
-                .alias("Trimestre"))
+                .alias(cd.TRIMESTRE))
 
         Confronto_Analitico = Analitico.select(
                 pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.SITUACAO), pl.col(cd.VL_NFE), pl.col(cd.EFD_ICMS_IPI), pl.col(cd.VL_EFD_F),
-                pl.col(cd.EFD_CONTRIBUICOES), pl.col(cd.VL_ITEM), pl.col("XML X ICMS"), pl.col("XML X EFD"), pl.col("ICMS X EFD"), pl.col("Trimestre"), pl.col(cd.ANO))
+                pl.col(cd.EFD_CONTRIBUICOES), pl.col(cd.VL_ITEM), pl.col("XML X ICMS"), pl.col("XML X EFD"), pl.col("ICMS X EFD"), pl.col(cd.TRIMESTRE), pl.col(cd.ANO))
 
 
         nConsiderado = an.nConsiderado(NFe).sort(cd.PERÍODO)
@@ -256,7 +256,46 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
 
         Notas = Notas.select(pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.COD_PART), pl.col(cd.CNPJ_DEST), pl.col(cd.NOME_DEST), 
                              pl.col(cd.EFD_ICMS_IPI),pl.col(cd.EFD_CONTRIBUICOES),pl.col(cd.NFe), pl.col("TOTAL"), pl.col("Diferença"), 
-                             pl.col("total_nConsiderado")).sort(cd.PERÍODO, descending=False)
+                             pl.col("total_nConsiderado"), pl.col(cd.ANO)).sort(cd.PERÍODO, descending=False)
+
+
+        # consolidado
+        Consolidado = Confronto_Analitico.select(cd.PERÍODO, cd.ANO).group_by([cd.PERÍODO, cd.ANO]).all()
+        Consolidado = Consolidado.with_columns(pl.arange(12, 12 + Consolidado.height).alias(cd.linha))
+        
+        Confronto_Consolidado = Consolidado.with_columns([
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!B12:B1000000,B{},'CONFRONTO - ANALITICO'!E12:E1000000)", pl.col(cd.linha)).alias(cd.VL_NFE),
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!B12:B1000000,B{},'CONFRONTO - ANALITICO'!G12:G1000000)", pl.col(cd.linha)).alias(cd.VL_EFD_F),
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!B12:B1000000,B{},'CONFRONTO - ANALITICO'!I12:I1000000)", pl.col(cd.linha)).alias(cd.VL_ITEM),
+                pl.format("=C{}-D{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x ICMS"),
+                pl.format("=C{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x CONTRIB"),
+                pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB")    
+        ])
+
+
+        # anual
+        Anual = Confronto_Analitico.select(cd.ANO).group_by(cd.ANO).all()
+        Anual = Anual.with_columns([
+                pl.lit("='CONFRONTO - ANALITICO'!E9").alias(cd.VL_NFE),
+                pl.lit("='CONFRONTO - ANALITICO'!G9").alias(cd.VL_EFD_F),
+                pl.lit("='CONFRONTO - ANALITICO'!I9").alias(cd.VL_ITEM),
+                pl.lit("=C12-D12").alias("XML x ICMS"),
+                pl.lit("=C12-E12").alias("XML x CONTRIB"),
+                pl.lit("=D12-E12").alias("ICMS x CONTRIB")
+        ])
+
+
+        # trimestal
+        Trimestral = Confronto_Analitico.select(cd.ANO, cd.TRIMESTRE).group_by(cd.ANO, cd.TRIMESTRE).all()
+        Trimestral = Trimestral.with_columns(pl.arange(12, 12 + Consolidado.height).alias(cd.linha))
+        Trimestral = Trimestral.with_columns([
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!E12:E1000000)", pl.col(cd.linha)).alias(cd.VL_NFE),
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!G12:G1000000)", pl.col(cd.linha)).alias(cd.VL_EFD_F),
+                pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!I12:I1000000)", pl.col(cd.linha)).alias(cd.VL_ITEM),
+                pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x ICMS"),
+                pl.format("=D{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x CONTRIB"),
+                pl.format("=E{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB") 
+        ])
 
 
         df_empresa = pl.concat([
@@ -265,5 +304,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto):
                 quebra_nfe.select([cd.NOME, cd.CNPJ])
                 ], how="diagonal")
         empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
+
+
         
-        # we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, Notas, quebra_nfe, nConsiderado, nProcessado, Confronto_Analitico, projeto)
+        we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, Notas, quebra_nfe, nConsiderado, nProcessado, Anual, Trimestral, Confronto_Consolidado, Confronto_Analitico, projeto)

@@ -69,11 +69,12 @@ nItem = "NItem"
 value = "value"
 ANO = "ANO"
 MES = "MES"
+TRIMESTRE = "Trimestre"
 CALC_CONFRONTO = "Cálculo Confronto"
 MOTIVO = "Motivo"
 COD_SIT_DOC = "Código da Situação do Documento"
 DESC_DOC = "Descrição da Situação do Documento"
-
+linha = "linha"
 
 
 escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURACAO)'
