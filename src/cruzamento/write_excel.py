@@ -6,6 +6,16 @@ import polars as pl
 
 
 def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
+    """
+    Description:
+        Writes the output files generated from the analysis.
+    Parameters:
+        self:
+        empresa: Company name.
+        escrituracao: Dataframe with the data to be written.
+        analise: Dataframe with the information about the files that could not be processed.
+        projeto: Project name.
+    """
     directory = os.path.dirname(os.path.abspath(__file__))
     root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]
@@ -21,6 +31,25 @@ def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
 
 
 def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada, nProcessado, Anual, Trimestral, Consolidado, Analitico, projeto):
+    """
+    Description:
+        Writes the output files generated from the analysis
+    Parameters:
+        self:
+        empresa: Company name.
+        Contribuicoes: Processed SPED Contribuições data.
+        Fiscal: Processed SPED Fiscal data.
+        Notas: DataFrame containing the data summary.
+        NFE: Processed NFe data.
+        nConsiderada: DataFrame with datas that were not considered.     
+        nProcessado: DataFrame with datas that could not be processed.
+        Anual: Annual summary.
+        Trimestral: Quarterly summary.
+        Consolidado: Dataframe with the consolidated view.
+        Analitico: Dataframe with the analytic view.
+        projeto: Project name.
+    """
+    
     directory = os.path.dirname(os.path.abspath(__file__))
     root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]

@@ -2,6 +2,15 @@ import polars as pl
 import cruzamento.cruzamento_definition as cd
 
 def filtro_contribuicoes(df):
+    """
+    Description:
+        Filters and processes information from the SPED Contribuições file.
+    Parameters:
+        df: Dataframe containing the file information.
+    Returns:
+        DataFrame with selected and processed fields.
+    """
+
     filtro_1 = df.filter((pl.col(cd.Registro) == "A170") & (pl.col(cd.IND_OPER) == "1"))
     resto_1 = df.filter(pl.col(cd.Registro) != "A170")  
     

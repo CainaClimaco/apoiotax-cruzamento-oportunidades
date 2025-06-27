@@ -9,7 +9,9 @@ def sped_padrao(sped_type, registros, path_env):
     Description:
         Reads an Excel file with the SPED layout and transpose it into a Dataframe
     Parameters:
-        sped_type: Sped type dictionary
+        sped_type: Sped type dictionary.
+        registros: List of registers to filter the df.
+        path_env:
     Returns:
         A transposed Dataframe with the base structure of the SPED. 
     """

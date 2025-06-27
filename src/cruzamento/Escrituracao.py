@@ -35,11 +35,8 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
     NFe = NFe.with_columns(pl.lit("SIM").alias(cd.NFe))
         
 
-    df_empresa = pl.concat([
-        df_contribuicoes.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000'),
-        df_fiscal.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000')
-    ])
-    empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
+    
+    empresa, cnpj = em.empresa_cnpj(inbound, df_fiscal, df_contribuicoes)
 
 
     tratamento = NFe.with_columns([

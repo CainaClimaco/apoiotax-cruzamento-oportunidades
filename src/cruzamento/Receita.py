@@ -299,12 +299,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         ])
 
 
-        df_empresa = pl.concat([
-                df_contribuicoes.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000'),
-                df_fiscal.select([cd.NOME, cd.CNPJ, cd.Registro]).filter(pl.col(cd.Registro) == '0000'),
-                quebra_nfe.select([cd.NOME, cd.CNPJ])
-                ], how="diagonal")
-        empresa, cnpj = em.empresa_cnpj(inbound, df_empresa)
+        empresa, cnpj = em.empresa_cnpj(inbound, df_fiscal, df_contribuicoes)
 
         
         we.excel_receita(self, empresa, quebraContrib, quebra_fiscal, Notas, quebra_nfe, nConsiderado, nProcessado, Anual, Trimestral, Confronto_Consolidado, Confronto_Analitico, projeto)
