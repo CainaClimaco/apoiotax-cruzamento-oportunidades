@@ -59,6 +59,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             analitico = Analitico.filter(pl.col(cd.ANO) == ano)
             analitico = analitico.drop(cd.ANO)
+            analitico = analitico.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
             anual = Anual.filter(pl.col(cd.ANO) == ano)
 
@@ -67,6 +68,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
 
             consolidado = Consolidado.filter(pl.col(cd.ANO) == ano)
             consolidado = consolidado.drop(cd.ANO, cd.linha)
+            consolidado = consolidado.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
             cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_ANALITICO.xlsx')
             wb = eh.open_template(cruzamentos_file)
@@ -85,6 +87,8 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             Fisc = Fiscal.filter(pl.col(cd.ANO) == ano)
             Fisc = Fisc.drop(cd.ANO)
+            Fisc = Fisc.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
+
             cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_EFDFISCAL.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
@@ -99,6 +103,8 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             contrib = Contribuicoes.filter(pl.col(cd.ANO) == ano)
             contrib = contrib.drop(cd.ANO)
+            contrib = contrib.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
+
             cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_EFDCONTRIBUICOES.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
@@ -113,6 +119,8 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             notas = Notas.filter(pl.col(cd.ANO) == ano)
             notas = notas.drop(cd.ANO)
+            notas = notas.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
+
             cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_NOTAS.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
@@ -127,6 +135,8 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             nf = NFE.filter(pl.col(cd.ANO) == ano)
             nf = nf.drop(cd.ANO)
+            nf = nf.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
+
             cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_XML.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
@@ -141,6 +151,8 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         for ano in anos:
             nConsid = nConsiderada.filter(pl.col(cd.ANO) == ano)
             nConsid = nConsid.drop(cd.ANO)
+            nConsid = nConsid.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
+            
         cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_XML_N_CONSIDERADOS.xlsx')
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])

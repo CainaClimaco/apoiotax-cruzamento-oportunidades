@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Projetos\\projetos\\Dados\\nfe", "-n", "Sped Cruzamento", "-s", "{'Solicitação': 'teste', 'Tipo': 'EFD_F_x_EFD_C_x_NF-e_(RECEITA)'}"
+                "-i", "C:\\Projetos\\projetos\\Dados\\base_cruzamento", "-n", "Sped Cruzamento", "-s", "{'Solicitação': 'teste', 'Tipo': 'EFD_F_x_EFD_C_x_NF-e_(RECEITA)'}"
             ]
         }
     ]

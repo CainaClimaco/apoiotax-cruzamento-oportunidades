@@ -28,7 +28,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         engine = "openpyxl")
 
 
-        fiscal, contribuicoes = dr.process(df_contribuicoes, df_fiscal, path_env)
+        fiscal, contribuicoes = dr.process_sped(df_contribuicoes, df_fiscal, path_env)
 
 
         contribuicoes = contribuicoes.select(cd.PERÍODO, cd.CHV_NFE, cd.Registro, cd.CNPJ, pl.col(cd.DT_DOC).str.strptime(pl.Date, format="%d%m%Y"), 
@@ -74,7 +74,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         
         quebraContrib = quebraContrib.select(
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
-                pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC), pl.col(cd.CST), 
+                pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC).dt.strftime("%d/%m/%Y"), pl.col(cd.CST), 
                 pl.col(cd.CFOP), pl.col(cd.DESCRICAO), pl.col(cd.COD_SIT), pl.col(cd.COD_MOD), pl.col(cd.IND_OPER), 
                 pl.col(cd.IND_ESCRI), pl.col(cd.VL_ITEM), pl.col(cd.ANO)).sort([cd.PERÍODO, cd.VL_ITEM], descending=[False, True])
 
@@ -110,7 +110,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         
         quebra_fiscal = Fiscal.select(
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
-                pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC), pl.col(cd.CST_ICMS), 
+                pl.col(cd.CNPJ_DEST), pl.col(cd.NUM_DOC), pl.col(cd.CHV_NFE), pl.col(cd.DT_DOC).dt.strftime("%d/%m/%Y"), pl.col(cd.CST_ICMS), 
                 pl.col(cd.CFOP), pl.col(cd.DESCRICAO), pl.col(cd.COD_SIT), pl.col(cd.ALIQ_ICMS), pl.col(cd.VL_OPR),  pl.col(cd.VL_BC_ICMS), 
                 pl.col(cd.VL_ICMS), pl.col(cd.VL_BC_ICMS_ST), pl.col(cd.VL_ICMS_ST), pl.col(cd.VL_IPI), pl.col(cd.CALC_CONFRONTO), pl.col(cd.ANO)
         ).sort([cd.PERÍODO, cd.CALC_CONFRONTO], descending=[False, True])
@@ -270,7 +270,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
                 pl.format("=SUMIF('CONFRONTO - ANALITICO'!B12:B1000000,B{},'CONFRONTO - ANALITICO'!I12:I1000000)", pl.col(cd.linha)).alias(cd.VL_ITEM),
                 pl.format("=C{}-D{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x ICMS"),
                 pl.format("=C{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x CONTRIB"),
-                pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB")    
+                pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB")
         ])
 
 
@@ -282,7 +282,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
                 pl.lit("='CONFRONTO - ANALITICO'!I9").alias(cd.VL_ITEM),
                 pl.lit("=C12-D12").alias("XML x ICMS"),
                 pl.lit("=C12-E12").alias("XML x CONTRIB"),
-                pl.lit("=D12-E12").alias("ICMS x CONTRIB")
+                pl.lit("=D12-E12").alias("ICMS x CONTRIB")  
         ])
 
 
@@ -295,8 +295,8 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
                 pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!I12:I1000000)", pl.col(cd.linha)).alias(cd.VL_ITEM),
                 pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x ICMS"),
                 pl.format("=D{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x CONTRIB"),
-                pl.format("=E{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB") 
-        ])
+                pl.format("=E{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB")
+        ]).sort(cd.TRIMESTRE)
 
 
         empresa, cnpj = em.empresa_cnpj(inbound, df_fiscal, df_contribuicoes)

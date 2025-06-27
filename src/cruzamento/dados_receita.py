@@ -343,7 +343,8 @@ def process_fiscal(df_fiscal, df_json, path_env):
 
 def process_sped(df_contribuicoes, df_fiscal, path_env):
     df_json = pl.read_json(cd.json_path)
+
     df_contribuicoes = process_contribuicoes(df_contribuicoes, df_json, path_env)
-    df_fiscal = process_contribuicoes(df_fiscal, df_json, path_env)
+    df_fiscal = process_fiscal(df_fiscal, df_json, path_env)
             
     return df_fiscal, df_contribuicoes 
