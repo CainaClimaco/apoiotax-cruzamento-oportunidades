@@ -17,18 +17,20 @@ class Sped_cruzamento(Commander):
         inbound = fh.get_sped_filters(inbound)
         operation = self.global_params["form_Tipo"]
         projeto = self.global_params["form_Solicitação"]
-
-
-        df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.PADRAO_EFDC, cd.EFDC)
-        df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF, cd.PADRAO_EFDF, cd.EFDF) 
+        path_env = f'{self.global_params['env_path']}/azure.env'
+ 
 
 
         match operation.upper():
             case cd.escrituracao:
-                es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto)
+                df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_escri_C, path_env)
+                df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_escri_F, path_env) 
+                es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
                 
             case cd.receita:
-                re.process_receita(inbound,df_contribuicoes, df_fiscal, self, projeto)
+                df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_receita_C, path_env)
+                df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_receita_F, path_env)
+                re.process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
 
 
 if __name__ == "__main__":

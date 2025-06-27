@@ -1,8 +1,10 @@
 import polars as pl
 import datatricks.sped.conversor_sped as cs
 import cruzamento.cruzamento_definition as cd
+import datatricks.sped.sped_definitions as dfn
 
-def sped_padrao(sped_type):
+
+def sped_padrao(sped_type, registros, path_env):
     """
     Description:
         Reads an Excel file with the SPED layout and transpose it into a Dataframe
@@ -11,11 +13,12 @@ def sped_padrao(sped_type):
     Returns:
         A transposed Dataframe with the base structure of the SPED. 
     """
-    df_padrao = (cs.get_remote_assets(sped_type))
+    df_padrao = (cs.get_remote_assets(sped_type.get(dfn.OBRIGACAO), path_env))
     versao = df_padrao.select(pl.col(cd.VERSAO).max()).item(0, 0)
 
-    df_padrao = df_padrao.filter(((pl.col("Registro") == 'C100') & (pl.col(cd.VERSAO) == versao)) | 
-        ((pl.col("Registro") == '0000') & (pl.col(cd.VERSAO) == versao))) 
+    df_json = pl.read_json(cd.json_path)
+    lista_contr = df_json.get_column(registros)
+    df_padrao = df_padrao.filter((pl.col(cd.Registro).is_in(lista_contr)) & (pl.col(cd.VERSAO) == versao))
 
 
     contadores = {}
@@ -27,20 +30,19 @@ def sped_padrao(sped_type):
         if contadores[valor_str] == 1:
             novo_campo.append(valor_str)
         else:
-            novo_campo.append(f"{valor_str}_{contadores[valor_str]-1}")
+            novo_campo.append(f"{valor_str}")
 
 
-    df_padrao = df_padrao.with_columns([
-        pl.Series("Campo", novo_campo)
-    ])
+    df_padrao = df_padrao.with_columns([pl.Series("Campo", novo_campo)]
+                ).unique(subset=["Campo"], keep="first")
+    
     df_transpose = df_padrao.transpose(column_names="Campo")
+    
     df_transpose = (df_transpose.with_columns([
         pl.col(col).map_elements(lambda x: None if isinstance(x, str) else x, return_dtype=df_transpose.schema[col])
         for col in df_transpose.columns])
-        .with_columns([pl.lit(None).alias("Período")])
+        .with_columns([pl.lit(None).alias("Período").cast(pl.Date), 
+                       pl.lit(None).alias(cd.NOME_DEST).cast(pl.String)])
         .unique(subset=["REG"], keep="first"))
-            
-    df_transpose = df_transpose.with_columns(pl.col("Período").cast(pl.Date))      
-     
+    
     return df_transpose
-

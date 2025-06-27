@@ -6,8 +6,7 @@ CHV_NFE = 'CHV_NFE'
 VERSAO = 'Versao' 
 PERÍODO = 'Período'
 ID = 'ID'
-CNPJ_EMIT = 'CNPJ_EMIT'
-CNPJ_DEST = 'CNPJ_DEST'
+CNPJ_DEST = 'CNPJ'
 Registro = 'Registro'
 file_name = "NOME DO ARQUIVO"
 processamento = "PROCESSAMENTO"
@@ -87,27 +86,48 @@ status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
 status_nfe = "Nota fiscal eletrônica (NF-e) duplicada"
 NFe = "NFE"
+reg_receita_F = "Registros_fiscal_receita"
+reg_receita_C = "Registros_contri_receita"
+reg_escri_F = "Registros_fiscal_escrituracao"
+reg_escri_C = "Registros_contri_escrituracao"
 
 
-EFDC = {NOME: 'field_7',
+EFDC = {
+    "0000": {
+        NOME: "field_7",
         CNPJ: 'Quebra CNPJ',
-        COD_SIT: 'field_10',
-        CHV_NFE: 'field_13'
+        },
+        "C100": {
+        COD_SIT: "field_10",
+        CHV_NFE: "field_13",
+        COD_PART: "field_8"
+        },
+        "0150": {
+        COD_PART: "field_12",
+        NOME_DEST: "field_13",
+        CNPJ_DEST: "field_15"}
 }
 
-EFDF = {NOME: 'field_5',
+EFDF = {
+    "0000": {
+        NOME: "field_5",
         CNPJ: 'Quebra CNPJ',
-        COD_SIT: 'field_7',
-        CHV_NFE: 'field_10'
+        },
+        "C100": {
+        COD_SIT: "field_7",
+        CHV_NFE: "field_10",
+        COD_PART: "field_5"
+        },
+        "0150": {
+        COD_PART: "field_3",
+        NOME_DEST: "field_4",
+        CNPJ_DEST: "field_6"}
 }
 
-PADRAO_EFDC = { Registro: 'REG',
-                COD_SIT: 'COD_SIT;'
-}
-PADRAO_EFDF = {
-        Registro: 'REG'
-}
-
+PADRAO = { Registro: 'REG',
+                COD_SIT: ['COD_SIT;', 'COD_SIT'],
+                CNPJ: 'CNPJ',
+                CNPJ_DEST:['CNPJ_CPF', 'CPF_CNPJ_ADQU']}
 NFE = {
         CAMPOS_ESCRITURACAO:
         ['nfeProc_NFe_infNFe_ide_dhEmi', 
@@ -121,7 +141,7 @@ NFE = {
         rename_e: 
         {PERÍODO: 'nfeProc_NFe_infNFe_ide_dhEmi',
         ID: 'nfeProc_NFe_infNFe_Id',
-        CNPJ_EMIT: 'nfeProc_NFe_infNFe_emit_CNPJ',
+        CNPJ: 'nfeProc_NFe_infNFe_emit_CNPJ',
         CNPJ_DEST: 'nfeProc_NFe_infNFe_dest_CNPJ',
         SITUACAO:'nfeProc_protNFe_infProt_xMotivo',
         tpNF: 'nfeProc_NFe_infNFe_ide_tpNF',
@@ -168,23 +188,5 @@ NFE = {
         vDesc:'nfeProc_NFe_infNFe_total_ICMSTot_vDesc',
         vOutro:'nfeProc_NFe_infNFe_total_ICMSTot_vOutro'
         }}
-
-C_re_C100 = {
-        COD_PART: 'field_8'
-}
-C_re_0150 = {
-        COD_PART: 'field_12',
-        NOME_DEST: 'field_13',
-        CNPJ_DEST: 'field_15'
-}
-
-ICMS_re_C100 = {
-        COD_PART: 'field_5'
-}
-ICMS_re_0150 = {
-        COD_PART: 'field_3',
-        NOME_DEST: 'field_4',
-        CNPJ_DEST: 'field_6'
-}
 
 

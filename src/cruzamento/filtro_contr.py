@@ -1,7 +1,7 @@
 import polars as pl
 import cruzamento.cruzamento_definition as cd
 
-def teste(df):
+def filtro_contribuicoes(df):
     filtro_1 = df.filter((pl.col(cd.Registro) == "A170") & (pl.col(cd.IND_OPER) == "1"))
     resto_1 = df.filter(pl.col(cd.Registro) != "A170")  
     

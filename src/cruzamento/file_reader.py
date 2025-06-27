@@ -14,38 +14,72 @@ def renomear_colunas(df, mapping: dict[str, str]):
         mapping: Dictionary mapping the column names.
     Returns:
         Dataframe with the columns renamed. 
-    """
-    rename_dict = {v: k for k,v in mapping.items()}
-    return df.rename(rename_dict)
+    # """
+
+    
+    # return df.rename({
+    #     next((old for old in (v if isinstance(v, list) else [v]) if old in df.columns), None): new
+    #     for new, v in mapping.items()
+    #     if any(old in df.columns for old in (v if isinstance(v, list) else [v]))
+    # })
+    
+    
+    exprs = []
+    for novo_nome, nomes_antigos in mapping.items():
+        nomes = [nomes_antigos] if isinstance(nomes_antigos, str) else nomes_antigos
+        colunas_existentes = [pl.col(n) for n in nomes if n in df.columns]
+        if colunas_existentes:
+            exprs.append(pl.coalesce(colunas_existentes).alias(novo_nome))
+    return df.select(exprs + [pl.col(c) for c in df.columns if c not in sum([v if isinstance(v, list) else [v] for v in mapping.values()], [])])
 
 
-def leitor_sped(inbound, obrigacao, sped_type, padrao, definition):
+
+
+    # rename_dict = {v: k for k,v in mapping.items()}
+    # return df.rename(rename_dict)
+
+
+def leitor_sped(inbound, obrigacao, sped_type, definition, registros, path_env):
     """
     Description:
         Reads and processes SPED files
     Parameters:
         inbound: Dataframe containing information about the recieved files.
         obrigacao: Indicates the tax obligation (e.g., EFDC, EFDF).
-        sped_type: sped type dictionary.
+        sped_type: sped type dictionary. 
         padrao: Dictionary containing the normalized column names.
         definition: Dictionary used to rename the Dataframe columns.
     Returns:
         Dataframe with the data extracted from the sped files.
     """
     if inbound.filter(pl.col(obrigacao)).is_empty():
-            df_padrao = tr.sped_padrao(sped_type)
-            df_padrao = renomear_colunas(df_padrao, padrao)
+            df_padrao = tr.sped_padrao(sped_type, registros, path_env)
+            df_padrao = renomear_colunas(df_padrao, cd.PADRAO)
+            
     else:
             df_efd = inbound.filter(pl.col(obrigacao) == True)
-            df_padrao = cv.quebra(df_efd, sped_type)
+            df_padrao = cv.quebra(df_efd, sped_type, path_env)
+
             df_padrao = df_padrao.with_columns([
-                pl.when(pl.col("Registro").eq("0000"))
-                .then(pl.col(definition[cd.NOME])).otherwise(pl.lit(None)).alias(cd.NOME),
-                pl.when(pl.col("Registro").eq("C100"))
-                .then(pl.col(definition[cd.COD_SIT])).otherwise(pl.lit(None)).alias(cd.COD_SIT),
-                pl.when(pl.col("Registro").eq("C100")) 
-                .then(pl.col(definition[cd.CHV_NFE])).otherwise(pl.lit(None)).alias(cd.CHV_NFE)
+                pl.when(pl.col(cd.Registro).eq("0000"))
+                .then(pl.col(definition["0000"][cd.NOME])).otherwise(pl.lit(None)).alias(cd.NOME),
+                pl.when(pl.col(cd.Registro).eq("C100"))
+                .then(pl.col(definition["C100"][cd.COD_SIT])).otherwise(pl.lit(None)).alias(cd.COD_SIT),
+                pl.when(pl.col(cd.Registro).eq("C100")) 
+                .then(pl.col(definition["C100"][cd.CHV_NFE])).otherwise(pl.lit(None)).alias(cd.CHV_NFE),
+                pl.when(pl.col("Registro").eq("0150"))
+                .then(pl.col(definition["0150"][cd.NOME_DEST])).otherwise(pl.lit(None)).alias(cd.NOME_DEST),
+                pl.when(pl.col("Registro").eq("0150")) 
+                .then(pl.col(definition["0150"][cd.CNPJ_DEST])).otherwise(pl.lit(None)).alias(cd.CNPJ_DEST),
+                pl.when(pl.col("Registro") == "C100")
+                .then(pl.col(definition["C100"][cd.COD_PART])).otherwise(None).alias("COD_PART_C100"),
+                pl.when(pl.col("Registro") == "0150")
+                .then(pl.col(definition["0150"][cd.COD_PART])).otherwise(None).alias("COD_PART_0150")
             ])
+            df_padrao = df_padrao.with_columns([
+                pl.coalesce([pl.col("COD_PART_C100"), pl.col("COD_PART_0150")]).alias(cd.COD_PART)
+            ])
+            
     return df_padrao
 
 
@@ -61,16 +95,15 @@ def leitor_nfe(inbound, obrigacao, status, regex_list=[], rename=[], field_list=
         Dataframe with the data extracted from the NF-e XML files. 
     """
     if inbound.filter(pl.col(obrigacao)).is_empty():
-        NFe = pl.DataFrame({
-            'file_Name': None,
-            'Período': None ,
-            'ID': None,
-            'CNPJ_EMIT':None,
-            'CNPJ_DEST': None,
-            'SITUAÇÃO NFE': None,
-            'tpNF': None,
-            'CHV_NFE':None
-            })
+
+        dados = {col: [None] for col in field_list}
+        NFe = pl.DataFrame(dados)
+        NFe = NFe.with_columns(
+             pl.lit(None).alias("file_Name")
+        )
+        NFe = NFe.cast(pl.String)
+        NFe = (renomear_colunas(NFe, rename))
+        
         xml_erro = pl.DataFrame({
             'NOME DO ARQUIVO': None,
             'PROCESSAMENTO': None ,
@@ -95,7 +128,7 @@ def leitor_nfe(inbound, obrigacao, status, regex_list=[], rename=[], field_list=
             'NOME DO ARQUIVO': None,
             'PROCESSAMENTO': None ,
             'STATUS ARQUIVO': None})
-             
+        
         return validos, xml_erro
  
         

@@ -45,9 +45,9 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
     tratamento = NFe.with_columns([
         pl.when(pl.col(cd.CNPJ_DEST).eq(cnpj))
             .then(pl.lit("Emissão Terceiros - Entrada"))
-        .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 0))
+        .when((pl.col(cd.CNPJ).eq(cnpj)) & (pl.col(cd.tpNF) == 0))
             .then(pl.lit("Emissão Própria - Entrada")) 
-        .when((pl.col(cd.CNPJ_EMIT).eq(cnpj)) & (pl.col(cd.tpNF) == 1))
+        .when((pl.col(cd.CNPJ).eq(cnpj)) & (pl.col(cd.tpNF) == 1))
             .then(pl.lit("Emissão Própria - Saída"))
         .otherwise(pl.lit("Terceiros - Sem Vínculo"))
         .alias(cd.EMISSAO)  
