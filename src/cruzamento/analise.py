@@ -97,6 +97,12 @@ def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
 
 def nConsiderado (NFe):
 
+    CFOP = pl.read_excel(
+        source = cd.CAMINHO_CFOP,
+        engine = "openpyxl")
+    
+    CFOP = CFOP.with_columns(pl.col(cd.CFOP).cast(pl.Int64))
+
     nAplicavel = NFe.filter(pl.col(cd.SITUACAO).ne_missing("Autorizado o uso da NF-e"))
     
     cancelada = NFe.filter(pl.col(cd.DESCRICAO).is_null())
@@ -114,6 +120,11 @@ def nConsiderado (NFe):
         pl.lit("Nota fiscal eletrônica (NF-e) duplicada").alias(cd.MOTIVO)])
 
     nConsiderado = pl.concat([duplicados, nConsiderado])
+    
+    nConsiderado = nConsiderado.join(CFOP, on= cd.CFOP, how='left')
+    
+    nConsiderado = nConsiderado.with_columns(pl.coalesce([pl.col("Descrição CFOP"), pl.col(cd.DESCRICAO)]).alias(cd.DESCRICAO))
+    
     nConsiderado = nConsiderado.select(pl.col(cd.nNF), pl.col(cd.PERÍODO), pl.col(cd.CHV_NFE), pl.col(cd.CFOP),
                                         pl.col(cd.DESCRICAO), pl.col(cd.SITUACAO), pl.col(cd.MOTIVO), pl.col(cd.vProd),
                                         pl.col(cd.vFrete), pl.col(cd.vSeg), pl.col(cd.vOutro), pl.col(cd.vDesc),

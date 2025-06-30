@@ -25,7 +25,7 @@ class Sped_cruzamento(Commander):
             case cd.escrituracao:
                 df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_escri_C, path_env)
                 df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_escri_F, path_env) 
-                es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
+                es.process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto)
                 
             case cd.receita:
                 df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_receita_C, path_env)

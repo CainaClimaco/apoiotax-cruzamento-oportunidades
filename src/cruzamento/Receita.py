@@ -24,7 +24,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         engine = "openpyxl")
 
         df_cfop = pl.read_excel(
-        source = cd.CAMINHO_CFOP,
+        source = cd.CAMINHO_XML_CFOP,
         engine = "openpyxl")
 
 
