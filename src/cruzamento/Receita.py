@@ -70,7 +70,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
 
 
         quebraContrib = quebraContrib.drop(cd.DESC_DOC, "Data de Fim", 
-                                           "Data de Início", "COD_SIT_right", cd.ALIQ).unique()
+                                           "Data de Início", "COD_SIT_right", cd.ALIQ)
         
         quebraContrib = quebraContrib.select(
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
@@ -106,7 +106,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         
         Fiscal = (Fiscal.filter(pl.col(cd.COD_SIT) == "00")
                                 ).drop_nulls(subset=[cd.CHV_NFE, cd.DESCRICAO]
-                                ).unique()
+                                )
         
         quebra_fiscal = Fiscal.select(
                 pl.col(cd.PERÍODO), pl.col(cd.Registro), pl.col(cd.CNPJ), pl.col(cd.COD_PART), pl.col(cd.NOME_DEST),
@@ -219,8 +219,9 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
         nConsiderado = an.nConsiderado(NFe).sort(cd.PERÍODO)
 
         tot_nConsiderado = nConsiderado.group_by(cd.ANO).agg(pl.len().alias("total_nConsiderado"))
+        analitico = analitico.drop_nulls(subset = cd.CHV_NFE)
 
-        total = analitico.group_by(cd.ANO).agg(pl.len().alias("TOTAL"))
+        total = analitico.group_by([cd.ANO]).agg(pl.len().alias("TOTAL"))
         
         diferenca = Analitico.with_columns(
                 pl.when((pl.col("XML X ICMS") != 0 )| (pl.col("XML X EFD")!= 0) | (pl.col("ICMS X EFD")!= 0))
@@ -261,8 +262,9 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
 
 
         # consolidado
-        Consolidado = Confronto_Analitico.select(cd.PERÍODO, cd.ANO).group_by([cd.PERÍODO, cd.ANO]).all()
-        Consolidado = Consolidado.with_columns(pl.arange(12, 12 + Consolidado.height).alias(cd.linha))
+        Consolidado = Confronto_Analitico.select(cd.PERÍODO, cd.ANO, cd.CHV_NFE).group_by([cd.PERÍODO, cd.ANO]).all().sort(cd.PERÍODO)
+        Consolidado = Consolidado.with_columns((pl.cum_count(cd.CHV_NFE).over(cd.ANO) + 11).alias(cd.linha))
+        Consolidado = Consolidado.drop(cd.CHV_NFE)
         
         Confronto_Consolidado = Consolidado.with_columns([
                 pl.format("=SUMIF('CONFRONTO - ANALITICO'!B12:B1000000,B{},'CONFRONTO - ANALITICO'!E12:E1000000)", pl.col(cd.linha)).alias(cd.VL_NFE),
@@ -287,8 +289,11 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
 
 
         # trimestal
-        Trimestral = Confronto_Analitico.select(cd.ANO, cd.TRIMESTRE).group_by(cd.ANO, cd.TRIMESTRE).all()
-        Trimestral = Trimestral.with_columns(pl.arange(12, 12 + Trimestral.height).alias(cd.linha))
+        Trimestral = Confronto_Analitico.select(cd.ANO, cd.TRIMESTRE, cd.CHV_NFE).group_by(cd.ANO, cd.TRIMESTRE).all().sort(cd.ANO, cd.TRIMESTRE)
+        
+        Trimestral = Trimestral.with_columns((pl.cum_count(cd.CHV_NFE).over(cd.ANO) + 11).alias(cd.linha))
+        Trimestral = Trimestral.drop(cd.CHV_NFE)
+        
         Trimestral = Trimestral.with_columns([
                 pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!E12:E1000000)", pl.col(cd.linha)).alias(cd.VL_NFE),
                 pl.format("=SUMIF('CONFRONTO - ANALITICO'!M12:M1000000,C{},'CONFRONTO - ANALITICO'!G12:G1000000)", pl.col(cd.linha)).alias(cd.VL_EFD_F),
@@ -296,7 +301,7 @@ def process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_en
                 pl.format("=D{}-E{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x ICMS"),
                 pl.format("=D{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("XML x CONTRIB"),
                 pl.format("=E{}-F{}", pl.col(cd.linha), pl.col(cd.linha)).alias("ICMS x CONTRIB")
-        ]).sort(cd.TRIMESTRE)
+        ])
 
 
         empresa, cnpj = em.empresa_cnpj(inbound, df_fiscal, df_contribuicoes)
