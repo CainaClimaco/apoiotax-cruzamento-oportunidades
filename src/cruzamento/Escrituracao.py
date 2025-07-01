@@ -76,8 +76,8 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
     situacao = verificacao.join(df_situacao, left_on=cd.COD_SIT_EFDC, right_on=cd.CODIGO, how="left"
                                 ).join(df_situacao, left_on=cd.COD_SIT_EFDF, right_on=cd.CODIGO, how="left")
 
-
-    escrituracao = situacao.sort('PERÍODO', cd.CHV_NFE )
+    escrituracao = situacao.select(cd.CHV_NFE, 'PERÍODO', cd.EFD_CONTRIBUICOES, pl.col('Descrição ').alias(cd.DESC_COD_SIT_EFDC), 
+                                   cd.EFD_ICMS_IPI, cd.COD_SIT_EFDF, pl.col("Descrição _right").alias(cd.DESC_COD_SIT_EFDF), cd.NFe, cd.SITUACAO, cd.EMISSAO).sort('PERÍODO', cd.CHV_NFE )
 
     we.excel_escrituracao(self, empresa, escrituracao, analise, projeto)
 
