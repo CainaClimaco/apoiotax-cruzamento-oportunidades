@@ -20,7 +20,7 @@ def filtrar_fora_do_padrao(df, extensao, obrigacao, status):
             Status: Provides the reason why the file was not processed. 
     """
     return df.filter(
-        (pl.col("file_Name").str.ends_with(extensao)) & (~obrigacao)
+        (pl.col("file_Name").str.ends_with(extensao)) & (obrigacao.not_())
     ).select([
         pl.col('file_Name').alias(cd.file_name),
         pl.lit("Não Processado"). alias(cd.processamento),
@@ -64,9 +64,9 @@ def count_arquivos(df_xml, df_txt_contrib, df_txt_fiscal,self):
         pl.Dataframe: Dataframe with a status indicating if any obligation files are missing. 
         It terminates the execution if all dataframes ar empty.
     """
-    df_xml = df_xml.filter(~pl.all_horizontal(pl.all().is_null()))
-    df_txt_contrib = df_txt_contrib.filter(~pl.all_horizontal(pl.all().is_null()))
-    df_txt_fiscal = df_txt_fiscal.filter(~pl.all_horizontal(pl.all().is_null()))
+    df_xml = df_xml.filter(pl.all_horizontal(pl.all().is_null()).not_())
+    df_txt_contrib = df_txt_contrib.filter(pl.all_horizontal(pl.all().is_null()).not_())
+    df_txt_fiscal = df_txt_fiscal.filter(pl.all_horizontal(pl.all().is_null()).not_())
 
     count_qtd_xml = len(df_xml) 
     count_qtd_txt = len(df_txt_contrib) + len(df_txt_fiscal) 
@@ -90,7 +90,7 @@ def analise(NFe, xml_erro, df_contribuicoes, df_fiscal, self, inbound):
     duplicada = nfe_duplicada(NFe, cd.CHV_NFE)
 
     analise = pl.concat([xml, txt, duplicada, erro, xml_erro], how="diagonal")
-    analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(~pl.all_horizontal(pl.all().is_null()))
+    analise = analise.sort("STATUS ARQUIVO", 'NOME DO ARQUIVO').filter(pl.all_horizontal(pl.all().is_null()).not_())
     
     return analise
 

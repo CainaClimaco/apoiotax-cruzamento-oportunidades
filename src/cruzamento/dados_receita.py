@@ -66,7 +66,7 @@ def processXML(inbound):
 
     df_nfe, xml_erro = fr.leitor_nfe(inbound, fd.IS_NFE, cd.status_xml, regex_list, rename=cd.NFE[cd.rename_r], field_list=cd.NFE[cd.CAMPOS_RECEITA])
 
-    df_nfe = df_nfe.filter(~pl.all_horizontal(pl.all().is_null()))
+    df_nfe = df_nfe.filter(pl.all_horizontal(pl.all().is_null()).not_())
 
     if not df_nfe.is_empty():
         df_nfe = df_nfe.with_columns(pl.col(cd.CHV_NFE).str.tail(44).alias(cd.CHV_NFE))
@@ -166,7 +166,7 @@ def process_contribuicoes(df_contribuicoes, df_json, path_env):
         A DataFrame containing the filtered and processed SPED data.
     """
 
-    df_contribuicoes = df_contribuicoes.filter(~pl.all_horizontal(pl.all().is_null()))
+    df_contribuicoes = df_contribuicoes.filter(pl.all_horizontal(pl.all().is_null()).not_())
        
     if not df_contribuicoes.is_empty():
         lista_contr = df_json.get_column(cd.reg_receita_C)
@@ -267,7 +267,7 @@ def process_fiscal(df_fiscal, df_json, path_env):
     Returns:
         A DataFrame containing the filtered and processed SPED data.
     """
-    df_fiscal = df_fiscal.filter(~pl.all_horizontal(pl.all().is_null()))
+    df_fiscal = df_fiscal.filter(pl.all_horizontal(pl.all().is_null()).not_())
     
     if not df_fiscal.is_empty():
         lista_fiscal = df_json.get_column(cd.reg_receita_F)

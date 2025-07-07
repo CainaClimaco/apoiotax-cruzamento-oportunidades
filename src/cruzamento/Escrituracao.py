@@ -21,13 +21,13 @@ def process_escrituracao(inbound, df_contribuicoes, df_fiscal, self, projeto):
     
     Contribuicoes = (df_contribuicoes.select([cd.Registro, cd.COD_SIT, cd.CHV_NFE, cd.PERÍODO])
                     ).filter(pl.col(cd.Registro) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
-                    ).filter(~pl.all_horizontal(pl.all().is_null()))
+                    ).filter(pl.all_horizontal(pl.all().is_null()).not_())
     
     Fiscal = (df_fiscal.select([cd.Registro, cd.COD_SIT, cd.CHV_NFE, cd.PERÍODO])
             ).filter(pl.col(cd.Registro) == 'C100').unique(subset=[cd.CHV_NFE], keep="first"
-            ).filter(~pl.all_horizontal(pl.all().is_null()))
+            ).filter(pl.all_horizontal(pl.all().is_null()).not_())
     
-    NFe = NFe.unique(subset=[cd.ID], keep="first").filter(~pl.all_horizontal(pl.all().is_null()))
+    NFe = NFe.unique(subset=[cd.ID], keep="first").filter(pl.all_horizontal(pl.all().is_null()).not_())
 
 
     Contribuicoes = Contribuicoes.with_columns(pl.lit("SIM").alias(cd.EFD_CONTRIBUICOES))
