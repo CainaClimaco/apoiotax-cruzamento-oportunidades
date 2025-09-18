@@ -127,7 +127,7 @@ EFDF = {
 }
 
 PADRAO = { Registro: 'REG',
-                COD_SIT: ['COD_SIT;', 'COD_SIT'],
+                COD_SIT: 'COD_SIT',
                 CNPJ: 'CNPJ',
                 CNPJ_DEST:['CNPJ_CPF', 'CPF_CNPJ_ADQU']}
 NFE = {

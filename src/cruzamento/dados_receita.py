@@ -243,7 +243,6 @@ def process_contribuicoes(df_contribuicoes, df_json, path_env):
             pl.coalesce([pl.col("CST_COFINS"), pl.col("CST_PIS")]).alias(cd.CST),
             pl.coalesce([pl.col("DT_OPER"), pl.col("DT_REF"), pl.col("DT_DOC_INI"), pl.col(cd.DT_DOC)]).alias(cd.DT_DOC),
             pl.coalesce([pl.col("NUM_DOC_INI"), pl.col(cd.NUM_DOC)]).alias(cd.NUM_DOC),
-            pl.coalesce([pl.col("COD_SIT;"), pl.col(cd.COD_SIT)]).alias(cd.COD_SIT),
             pl.coalesce([pl.col("ALIQ_PIS"), pl.col("ALIQ_COFINS")]).alias(cd.ALIQ))
     else:
         df_cont_renomeado = df_contribuicoes.with_columns(
