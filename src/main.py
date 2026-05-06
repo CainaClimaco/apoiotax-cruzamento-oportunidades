@@ -32,6 +32,12 @@ class Sped_cruzamento(Commander):
                 df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_receita_F, path_env)
                 re.process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
 
+            case cd.uso_consumo:
+                import cruzamento.uso_consumo as uc
+                df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_uso_consumo_C, path_env)
+                df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_uso_consumo_F, path_env)
+                uc.process_uso_consumo(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
+
 
 if __name__ == "__main__":
     cmd = Sped_cruzamento(app = 'Sped Cruzamento', path=os.path.abspath(__file__), args=sys.argv)

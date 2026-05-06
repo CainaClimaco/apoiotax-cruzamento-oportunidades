@@ -171,3 +171,67 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         eh.dump_data_to_sheet(excel_thing=wb, data=nProcessado, starting_cell='B12', write_header=False, sheet_name="ARQUIVOS_PARA_ANALISE")
         wb.save(output_folder + "\\" + "7. Apter_Não_Processados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
+
+def excel_uso_consumo(self, empresa, cnpj, regime, periodo_ini, periodo_fim,
+                      resumo, detalhes, orfaos, projeto):
+    """
+    Gera o workbook de Uso & Consumo usando o template padrão Taxverse.
+    Segue exatamente o mesmo padrão das demais funções de escrita:
+      - Empresa em B6 do INDICE (write_header=False)
+      - Dados em B12 de cada aba (write_header=False, colunas alinhadas ao header da linha 11)
+    """
+    directory = os.path.dirname(os.path.abspath(__file__))
+    root_directory = os.path.dirname(directory)
+    output_folder = self.global_params["output"]
+
+    template_path = os.path.join(root_directory, cd.CAMINHO_UC_TEMPLATE.replace('src\\', ''))
+    filename = (
+        output_folder + "\\"
+        + "Apter_UsoeConsumo_"
+        + projeto + "_"
+        + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        + ".xlsx"
+    )
+
+    wb = eh.open_template(template_path)
+    company = pl.DataFrame([empresa])
+
+    # ÍNDICE — nome da empresa em B7 (placeholder 'APTER' no template)
+    eh.dump_data_to_sheet(
+        excel_thing=wb, data=company,
+        starting_cell='B7', write_header=False, sheet_name="ÍNDICE"
+    )
+
+    # RESUMO — colunas alinhadas à linha 11 do template:
+    # EMPRESA, CNPJ, REGIME_TRIBUTARIO, PERIODO_INI, PERIODO_FIM,
+    # TOTAL_NFS_ANALISADAS, TOTAL_ITENS_CRUZADOS, TOTAL_ITENS_USO_CONSUMO,
+    # TOTAL_ELEGIVEL, TOTAL_REVISAO, TOTAL_NAO_ELEGIVEL, TOTAL_ORFAOS,
+    # VL_CREDITO_PIS, VL_CREDITO_COFINS, VL_CREDITO_TOTAL
+    if resumo is not None and resumo.height > 0:
+        eh.dump_data_to_sheet(
+            excel_thing=wb, data=resumo,
+            starting_cell='B12', write_header=False, sheet_name="RESUMO"
+        )
+
+    # DETALHES — colunas alinhadas à linha 11 do template (22 colunas B→W):
+    # ITEM_KEY, CHV_NFE, COD_PART, RAZAO_SOCIAL, CNPJ_EMIT, NUM_DOC, SER,
+    # DT_DOC, CFOP, DESCR_COMPL, CST_PIS, CST_COFINS, ALIQ_PIS, ALIQ_COFINS,
+    # VL_ITEM, VL_BC_PIS, VL_BC_COFINS, ELEGIBILIDADE,
+    # VL_CREDITO_PIS, VL_CREDITO_COFINS, VL_CREDITO_TOTAL, OBSERVACOES
+    if detalhes is not None and detalhes.height > 0:
+        eh.dump_data_to_sheet(
+            excel_thing=wb, data=detalhes,
+            starting_cell='B12', write_header=False, sheet_name="DETALHES"
+        )
+
+    # ORFAOS — colunas alinhadas à linha 11 do template (8 colunas B→I):
+    # CHAVE_NF, CHV_NFE, COD_PART, NUM_DOC, SER, DT_DOC, VL_DOC, OBRIGACAO_FALTANTE
+    if orfaos is not None and orfaos.height > 0:
+        eh.dump_data_to_sheet(
+            excel_thing=wb, data=orfaos,
+            starting_cell='B12', write_header=False, sheet_name="ORFAOS"
+        )
+
+    wb.save(filename)
+    self.logger.info(f"[U&C] Output salvo (template): {filename}")
+

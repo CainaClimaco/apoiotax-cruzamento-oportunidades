@@ -10,5 +10,11 @@
      ["C100", "0000"],
 
     "Registros_contri_escrituracao":
-     ["C100", "0000"]
+     ["C100", "0000"],
+
+    "Registros_fiscal_uso_consumo":
+     ["C100", "C170", "C190", "0150", "0000"],
+
+    "Registros_contri_uso_consumo":
+     ["C100", "C170", "0150", "0000"]
 }

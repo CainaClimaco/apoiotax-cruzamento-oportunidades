@@ -76,14 +76,60 @@ COD_SIT_DOC = "Código da Situação do Documento"
 DESC_DOC = "Descrição da Situação do Documento"
 linha = "linha"
 
+# ── Uso & Consumo ─────────────────────────────────────────────────
+CST_PIS            = "CST_PIS"
+CST_COFINS         = "CST_COFINS"
+ALIQ_PIS           = "ALIQ_PIS"
+ALIQ_COFINS        = "ALIQ_COFINS"
+VL_BC_PIS          = "VL_BC_PIS"
+VL_BC_COFINS       = "VL_BC_COFINS"
+VL_PIS             = "VL_PIS"
+VL_COFINS          = "VL_COFINS"
+ELEGIBILIDADE      = "ELEGIBILIDADE"
+VL_CREDITO_PIS     = "VL_CREDITO_PIS"
+VL_CREDITO_COFINS  = "VL_CREDITO_COFINS"
+VL_CREDITO_TOTAL   = "VL_CREDITO_TOTAL"
+REGIME             = "REGIME"
+NUM_ITEM           = "NUM_ITEM"
+OBRIGACAO_FALTANTE = "OBRIGACAO_FALTANTE"
+OBSERVACOES        = "OBSERVACOES"
+JOIN_KEY           = "JOIN_KEY"
+RAZAO_SOCIAL       = "RAZAO_SOCIAL"
+SER                = "SER"
+NUM_DOC            = "NUM_DOC"
+DT_DOC_UC          = "DT_DOC"
+VL_DOC             = "VL_DOC"
+DESCR_ITEM         = "DESCR_ITEM"
+CST_ICMS_UC        = "CST_ICMS"
+ALIQ_ICMS_UC       = "ALIQ_ICMS"
+VL_ICMS_UC         = "VL_ICMS"
+CFOP_UC            = "CFOP"
+COD_INC_TRIB       = "COD_INC_TRIB"
+
+# Elegibilidade labels
+ELEG_ELEGIVEL     = "elegivel"
+ELEG_REVISAO      = "revisao"
+ELEG_NAO_ELEGIVEL = "nao_elegivel"
+
+# Regime labels
+REGIME_REAL      = "Lucro Real (Não-Cumulativo)"
+REGIME_PRESUMIDO = "Lucro Presumido (Cumulativo)"
+REGIME_OUTRO     = "Outro/Não Identificado"
+
+# Orphan labels
+ORFAO_APENAS_FISCAL = "Apenas EFD ICMS IPI"
+ORFAO_APENAS_CONTRIB = "Apenas EFD Contribuições"
 
 escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURACAO)'
 receita = 'EFD_F_X_EFD_C_X_NF-E_(RECEITA)'
+uso_consumo = 'USO_CONSUMO'
 CAMINHO_SITUACAO = 'src\\assets\\Situacao_NF-e.xlsx'
 CAMINHO_XML_CFOP = 'src\\assets\\XML_CFOPs.xlsx'
 CAMINHO_CFOP = 'src\\assets\\CFOP.xlsx'
 CAMINHO_COD_SIT = 'src\\assets\\COD_SIT.xlsx'
 json_path = "src\\assets\\registros.json"
+CAMINHO_UC_CONFIG = 'src\\assets\\uso_consumo_config.json'
+CAMINHO_UC_TEMPLATE = 'src\\assets\\templates\\Template_Uso_Consumo.xlsx'
 status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
 status_nfe = "Nota fiscal eletrônica (NF-e) duplicada"
@@ -92,6 +138,8 @@ reg_receita_F = "Registros_fiscal_receita"
 reg_receita_C = "Registros_contri_receita"
 reg_escri_F = "Registros_fiscal_escrituracao"
 reg_escri_C = "Registros_contri_escrituracao"
+reg_uso_consumo_F = "Registros_fiscal_uso_consumo"
+reg_uso_consumo_C = "Registros_contri_uso_consumo"
 
 
 EFDC = {
