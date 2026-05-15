@@ -205,7 +205,7 @@ def excel_oportunidades(self, empresa, fase1_data: dict, projeto: str, resumo_in
     DARK_GREEN = "FF375623"
     GREEN_OK   = "FF70AD47"
     RED_WARN   = "FFC00000"
-    NUMBER_FMT = '_(* #.##0,00_);_(* (#.##0,00);_(* "-"_);@_)'
+    NUMBER_FMT = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"_);@_)'
 
     f10_bold        = Font(name="Calibri", size=10, bold=True)
     f10_bold_white  = Font(name="Calibri", size=10, bold=True, color=WHITE)
