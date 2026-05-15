@@ -448,4 +448,4 @@ def excel_oportunidades(self, empresa, fase1_data: dict, projeto: str, resumo_in
         cell.font      = f11_link
 
     wb.save(filename)
-    self.logger.info(f"[FASE1] Output salvo: {filename}")
+    self.logger.info(f"[OPORTUNIDADES] Output salvo: {filename}")

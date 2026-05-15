@@ -12,7 +12,7 @@ import polars as pl
 import datatricks.sped.sped_definitions as dfn
 import cruzamento.cruzamento_definition as cd
 from cruzamento.dados_receita import rename_columns
-from cruzamento.dados_uso_consumo import _safe_select, _to_float, _cast_id_to_str
+from cruzamento.dados_oportunidades import _safe_select, _to_float, _cast_id_to_str
 
 
 def extrair_a100_contribuicoes(
