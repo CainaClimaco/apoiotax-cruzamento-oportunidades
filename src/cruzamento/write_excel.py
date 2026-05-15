@@ -217,10 +217,14 @@ def excel_oportunidades(self, empresa, fase1_data: dict, projeto: str, resumo_in
     fill_white  = PatternFill("solid", fgColor=WHITE)
     fill_orange = PatternFill("solid", fgColor=ORANGE)
 
+    DS_RED   = "FF83181B"
+    DS_AMBER = "FFF39200"
+    DS_GRAY  = "FF575756"
+
     GRUPO_FILLS = {
-        "EFD ICMS IPI":      PatternFill("solid", fgColor=NAVY),
-        "CHAVE":             PatternFill("solid", fgColor=ORANGE),
-        "EFD Contribuicoes": PatternFill("solid", fgColor=DARK_GREEN),
+        "EFD ICMS IPI":      PatternFill("solid", fgColor=DS_RED),
+        "CHAVE":             PatternFill("solid", fgColor=DS_AMBER),
+        "EFD Contribuicoes": PatternFill("solid", fgColor=DS_GRAY),
     }
     GRUPO_LABELS = {
         "EFD ICMS IPI":      "EFD ICMS IPI",
@@ -330,15 +334,15 @@ def excel_oportunidades(self, empresa, fase1_data: dict, projeto: str, resumo_in
             cell.alignment = align_center
         ws.auto_filter.ref = f"B11:{get_column_letter(1 + n_cols)}11"
 
-        # Aplica number_format via column_dimensions — O(n_colunas), não O(linhas × colunas)
-        # Células sem formato explícito herdam o formato da coluna no Excel
-        for j, dtype in enumerate(df.dtypes):
-            if isinstance(dtype, _NUMERIC):
-                ws.column_dimensions[get_column_letter(j + 2)].number_format = NUMBER_FMT
+        numeric_cols = {j + 2 for j, dtype in enumerate(df.dtypes) if isinstance(dtype, _NUMERIC)}
 
-        # Linha 12+: dados via append
+        # Linha 12+: dados via append, com number_format aplicado por célula nas colunas numéricas
         for row_data in df.iter_rows(named=False):
             ws.append([None] + list(row_data))
+            if numeric_cols:
+                row_idx = ws.max_row
+                for col_idx in numeric_cols:
+                    ws.cell(row_idx, col_idx).number_format = NUMBER_FMT
 
     # ── Escrever aba RESUMO ──────────────────────────────────────────
     def _write_resumo(ws) -> None:
