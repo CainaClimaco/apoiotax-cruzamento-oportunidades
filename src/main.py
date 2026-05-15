@@ -32,11 +32,11 @@ class Sped_cruzamento(Commander):
                 df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_receita_F, path_env)
                 re.process_receita(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
 
-            case cd.fase1:
-                import cruzamento.fase1 as f1
-                df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_fase1_C, path_env)
-                df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_fase1_F, path_env)
-                f1.process_fase1(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
+            case cd.oportunidades:
+                import cruzamento.Oportunidades as op
+                df_contribuicoes = fr.leitor_sped(inbound, fd.IS_EFDC, dfn.EFDC, cd.EFDC, cd.reg_oportunidades_C, path_env)
+                df_fiscal = fr.leitor_sped(inbound, fd.IS_EFDF, dfn.EFDF,  cd.EFDF, cd.reg_oportunidades_F, path_env)
+                op.process_oportunidades(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env)
 
 
 if __name__ == "__main__":

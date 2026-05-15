@@ -171,7 +171,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         wb.save(output_folder + "\\" + "7. Apter_Não_Processados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
 
-def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict | None = None) -> None:
+def excel_oportunidades(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict | None = None) -> None:
     """
     Gera o workbook da FASE 1 de forma totalmente programatica.
     Reproduz o layout Apter: logo, sem gridlines, zoom 80%, formatacao
@@ -192,7 +192,7 @@ def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict
 
     filename = (
         output_folder + "\\"
-        + "Apter_FASE1_" + projeto + "_"
+        + "Apter_Oportunidades_" + projeto + "_"
         + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx"
     )
 
@@ -234,7 +234,7 @@ def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict
     border_bottom_orange = Border(bottom=Side(style="thin", color=ORANGE))
 
     SUBTITULOS = {
-        "RESUMO": "Resumo de Processamento e Validacoes",
+        "RESUMO": "Oportunidades - Resumo",
         "C170":   "C170 - Itens NF-e (EFD Fiscal x EFD Contribuicoes)",
         "D190":   "D190 - CT-e Itens (EFD Fiscal x EFD Contribuicoes)",
     }
@@ -349,7 +349,7 @@ def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict
             c.font      = f11_bold_white
             c.fill      = fill_orange
             c.alignment = align_left
-            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=8)
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=9)
 
         def _header_row(row: int, labels: list[str]) -> None:
             for j, lbl in enumerate(labels, start=2):
@@ -371,64 +371,49 @@ def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict
 
         current = 11
 
+        raizes_f = ri.get("raizes_f", [])
+        raizes_c = ri.get("raizes_c", [])
+        raiz_ok  = ri.get("raiz_ok", True)
+
         # ── Identificação ────────────────────────────────────────────
         _sec(current, "IDENTIFICAÇÃO"); current += 1
-        _header_row(current, ["Campo", "EFD Fiscal", "EFD Contribuições"]); current += 1
+        _header_row(current, ["Campo", "EFD Fiscal", "EFD Contribuições", "Status"]); current += 1
 
         rows_id = [
-            ("Empresa",     ri.get("empresa", ""),    ri.get("empresa", "")),
-            ("CNPJ",        ri.get("cnpj_f", ""),     ri.get("cnpj_c", "")),
-            ("Versão SPED", ri.get("versao_f") or "N/A", ri.get("versao_c") or "N/A"),
+            ("Empresa",          ri.get("empresa", ""),                     ri.get("empresa", ""),                     None),
+            ("Versão SPED",      ri.get("versao_f") or "N/A",               ri.get("versao_c") or "N/A",               None),
+            ("Raiz CNPJ",        ", ".join(raizes_f) or "N/A",              ", ".join(raizes_c) or "N/A",              raiz_ok),
+            ("Estabelecimentos", ", ".join(ri.get("cnpjs_f", [])) or "N/A", ", ".join(ri.get("cnpjs_c", [])) or "N/A", None),
         ]
-        for label, val_f, val_c in rows_id:
-            ws.cell(current, 2, label).font      = f10_bold
-            ws.cell(current, 2).alignment        = align_left
+        for label, val_f, val_c, status_ok in rows_id:
+            ws.cell(current, 2, label).font           = f10_bold
+            ws.cell(current, 2).alignment             = align_left
             ws.cell(current, 3, str(val_f)).alignment = align_left
             ws.cell(current, 4, str(val_c)).alignment = align_left
+            if status_ok is not None:
+                _status_cell(current, 5, status_ok)
             current += 1
 
         current += 1
         # ── Cobertura por período ─────────────────────────────────────
         _sec(current, "COBERTURA"); current += 1
-        _header_row(current, ["Período", "EFD Fiscal", "EFD Contribuições", "Coincidente"]); current += 1
+        _header_row(current, [
+            "Período", "EFD Fiscal", "EFD Contribuições", "Coincidente",
+            "Itens EFD Fiscal", "Itens EFD Contribuições",
+        ]); current += 1
 
         cobertura = ri.get("cobertura", {})
+        contagens = ri.get("contagens", {})
         for periodo, pres in sorted(cobertura.items()):
             tem_f = pres.get("f", False)
             tem_c = pres.get("c", False)
-            coincide = tem_f and tem_c
+            cnt   = contagens.get(periodo, {})
             ws.cell(current, 2, periodo).alignment = align_center
             _presence_cell(current, 3, tem_f)
             _presence_cell(current, 4, tem_c)
-            _status_cell(current, 5, coincide)
-            current += 1
-
-        current += 1
-        # ── Validações ───────────────────────────────────────────────
-        _sec(current, "VALIDAÇÕES"); current += 1
-        _header_row(current, ["Verificação", "Status", "Detalhe"]); current += 1
-
-        cnpjs_f     = set(ri.get("cnpjs_f", []))
-        cnpjs_c     = set(ri.get("cnpjs_c", []))
-        todos_cnpjs = cnpjs_f | cnpjs_c
-        cnpj_ok     = len(todos_cnpjs) <= 1
-        tem_f_flag  = ri.get("tem_efdf", False)
-        tem_c_flag  = ri.get("tem_efdc", False)
-
-        validacoes = [
-            ("CNPJ único", cnpj_ok,
-             "OK" if cnpj_ok
-             else f"ATENÇÃO: {len(todos_cnpjs)} CNPJs distintos: {', '.join(sorted(todos_cnpjs))}"),
-            ("Possui EFD Fiscal", tem_f_flag,
-             "Sim" if tem_f_flag else "Não — cruzamento sem EFD Fiscal"),
-            ("Possui EFD Contribuições", tem_c_flag,
-             "Sim" if tem_c_flag else "Não — cruzamento sem EFD Contribuições"),
-        ]
-        for label, ok, detalhe in validacoes:
-            ws.cell(current, 2, label).font       = f10_bold
-            ws.cell(current, 2).alignment         = align_left
-            _status_cell(current, 3, ok)
-            ws.cell(current, 4, detalhe).alignment = align_left
+            _status_cell(current, 5, tem_f and tem_c)
+            ws.cell(current, 6, cnt.get("n_f", "")).alignment = align_center
+            ws.cell(current, 7, cnt.get("n_c", "")).alignment = align_center
             current += 1
 
         current += 1

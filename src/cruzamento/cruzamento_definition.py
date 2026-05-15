@@ -76,7 +76,7 @@ COD_SIT_DOC = "Código da Situação do Documento"
 DESC_DOC = "Descrição da Situação do Documento"
 linha = "linha"
 
-# ── FASE 1 — enriquecimento ────────────────────────────────────────
+# ── OPORTUNIDADES — enriquecimento ─────────────────────────────────
 RAZAO_SOCIAL     = "RAZAO_SOCIAL"
 DESCR_ITEM       = "DESCR_ITEM"
 UNID_INV         = "UNID_INV"
@@ -98,9 +98,9 @@ CAMINHO_CST_ICMS       = 'src\\cruzamento\\assets\\CST_ICMS.json'
 
 escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURACAO)'
 receita = 'EFD_F_X_EFD_C_X_NF-E_(RECEITA)'
-fase1 = 'FASE1'
-reg_fase1_F = "Registros_fiscal_fase1"
-reg_fase1_C = "Registros_contri_fase1"
+oportunidades = 'OPORTUNIDADES'
+reg_oportunidades_F = "Registros_fiscal_oportunidades"
+reg_oportunidades_C = "Registros_contri_oportunidades"
 CAMINHO_SITUACAO = 'src\\cruzamento\\assets\\Situacao_NF-e.xlsx'
 CAMINHO_XML_CFOP = 'src\\cruzamento\\assets\\XML_CFOPs.xlsx'
 CAMINHO_CFOP = 'src\\cruzamento\\assets\\CFOP.xlsx'

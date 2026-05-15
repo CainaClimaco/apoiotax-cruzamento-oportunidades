@@ -1,7 +1,7 @@
 """
-dados_uso_consumo.py
-────────────────────
-Extraction and normalization utilities for the Use & Consumption cross-referencing module.
+dados_oportunidades.py
+───────────────────────
+Extraction and normalization utilities for the Oportunidades cross-referencing module.
 
 Follows the same rename_columns pattern established in dados_receita.py, extracting
 C100, C170, and 0150 records from both EFDs and returning clean DataFrames with

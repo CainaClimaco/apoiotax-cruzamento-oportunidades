@@ -1,17 +1,18 @@
 """
-fase1.py
-────────
-Ponto de entrada para o fluxo FASE 1: base completa de cruzamento
+Oportunidades.py
+────────────────
+Ponto de entrada para o fluxo Oportunidades: base completa de cruzamento
 EFD ICMS/IPI x EFD Contribuicoes, sem filtros de elegibilidade.
 
-Chama cruzamento_fase1.executar_fase1() e gera o Excel via write_excel.excel_fase1().
+Chama cruzamento_oportunidades.executar_oportunidades() e gera o Excel via
+write_excel.excel_oportunidades().
 """
 
 import time
 import datatricks.sped.conversor_sped as cv
 import datatricks.sped.sped_definitions as dfn
 import cruzamento.cruzamento_definition as cd
-import cruzamento.cruzamento_fase1 as cf1
+import cruzamento.cruzamento_oportunidades as co
 import cruzamento.empresa as em
 import cruzamento.write_excel as we
 
@@ -23,6 +24,11 @@ def _get_versao(df) -> str | None:
     return str(val) if val is not None else None
 
 
+def _raiz_cnpj(cnpj: str) -> str:
+    digits = "".join(c for c in cnpj if c.isdigit())
+    return digits[:8] if len(digits) >= 8 else digits
+
+
 def _build_resumo_info(
     empresa: str,
     cnpj: str,
@@ -30,7 +36,7 @@ def _build_resumo_info(
     versao_c: str | None,
     df_fiscal,
     df_contribuicoes,
-    fase1_data: dict,
+    oportunidades_data: dict,
 ) -> dict:
     import polars as pl
 
@@ -50,11 +56,9 @@ def _build_resumo_info(
         except Exception:
             return []
 
-    # Períodos por obrigação: EFD_F via resultado, EFD_C via DataFrame bruto
-    periodos_f = _periodos_set(fase1_data.get("C170")) | _periodos_set(fase1_data.get("D190"))
+    periodos_f = _periodos_set(oportunidades_data.get("C170")) | _periodos_set(oportunidades_data.get("D190"))
     periodos_c = _periodos_set(df_contribuicoes)
 
-    # Dict de cobertura por período: {periodo: {"f": bool, "c": bool}}
     todos_periodos = sorted(periodos_f | periodos_c)
     cobertura = {
         p: {"f": p in periodos_f, "c": p in periodos_c}
@@ -64,48 +68,61 @@ def _build_resumo_info(
     cnpjs_f = _cnpjs(df_fiscal)
     cnpjs_c = _cnpjs(df_contribuicoes)
 
+    raizes_f = sorted({_raiz_cnpj(c) for c in cnpjs_f if c})
+    raizes_c = sorted({_raiz_cnpj(c) for c in cnpjs_c if c})
+    raiz_ok  = bool(raizes_f) and bool(raizes_c) and set(raizes_f).issubset(set(raizes_c))
+
+    contagens: dict = {}
+    c170 = oportunidades_data.get("C170")
+    if c170 is not None and not c170.is_empty() and dfn.PERIODO in c170.columns:
+        for periodo in todos_periodos:
+            sub = c170.filter(pl.col(dfn.PERIODO).cast(pl.Utf8) == periodo)
+            n_f = sub.height
+            n_c = sub.filter(pl.col(cd.EM_EFD_C) == "Encontrado").height if cd.EM_EFD_C in sub.columns else 0
+            contagens[periodo] = {"n_f": n_f, "n_c": n_c}
+
     return {
         "empresa":    empresa,
-        "cnpj_f":     cnpjs_f[0] if cnpjs_f else cnpj,
-        "cnpj_c":     cnpjs_c[0] if cnpjs_c else "",
         "versao_f":   versao_f,
         "versao_c":   versao_c,
-        "tem_efdf":   versao_f is not None,
-        "tem_efdc":   versao_c is not None,
         "cobertura":  cobertura,
         "cnpjs_f":    cnpjs_f,
         "cnpjs_c":    cnpjs_c,
+        "raizes_f":   raizes_f,
+        "raizes_c":   raizes_c,
+        "raiz_ok":    raiz_ok,
+        "contagens":  contagens,
     }
 
 
-def process_fase1(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env):
+def process_oportunidades(inbound, df_contribuicoes, df_fiscal, self, projeto, path_env):
     t0 = time.perf_counter()
-    self.logger.info("[FASE1] Iniciando processamento FASE 1.")
+    self.logger.info("[OPORTUNIDADES] Iniciando processamento.")
 
     df_assets_c = cv.get_remote_assets(dfn.EFDC.get(dfn.OBRIGACAO), path_env)
     df_assets_f = cv.get_remote_assets(dfn.EFDF.get(dfn.OBRIGACAO), path_env)
     versao_c = _get_versao(df_contribuicoes)
     versao_f = _get_versao(df_fiscal)
 
-    self.logger.info(f"[FASE1] Versoes SPED — EFDC: {versao_c}  EFDF: {versao_f}")
+    self.logger.info(f"[OPORTUNIDADES] Versoes SPED — EFDC: {versao_c}  EFDF: {versao_f}")
 
     empresa, cnpj = em.empresa_cnpj(inbound, df_fiscal, df_contribuicoes)
-    self.logger.info(f"[FASE1] Empresa: {empresa} | CNPJ: {cnpj}")
+    self.logger.info(f"[OPORTUNIDADES] Empresa: {empresa} | CNPJ: {cnpj}")
 
-    fase1_data = cf1.executar_fase1(
+    oportunidades_data = co.executar_oportunidades(
         df_fiscal, df_assets_f, versao_f,
         df_contribuicoes, df_assets_c, versao_c,
     )
 
-    sizes = {k: len(v) for k, v in fase1_data.items() if not v.is_empty()}
-    self.logger.info(f"[FASE1] Registros extraidos: {sizes}")
+    sizes = {k: len(v) for k, v in oportunidades_data.items() if not v.is_empty()}
+    self.logger.info(f"[OPORTUNIDADES] Registros extraidos: {sizes}")
 
     resumo_info = _build_resumo_info(
         empresa, cnpj, versao_f, versao_c,
-        df_fiscal, df_contribuicoes, fase1_data,
+        df_fiscal, df_contribuicoes, oportunidades_data,
     )
 
-    we.excel_fase1(self, empresa, fase1_data, projeto, resumo_info)
+    we.excel_oportunidades(self, empresa, oportunidades_data, projeto, resumo_info)
 
     elapsed = round(time.perf_counter() - t0, 1)
-    self.logger.info(f"[FASE1] Concluido em {elapsed}s.")
+    self.logger.info(f"[OPORTUNIDADES] Concluido em {elapsed}s.")

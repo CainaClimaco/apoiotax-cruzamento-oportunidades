@@ -1,20 +1,20 @@
 """
-cruzamento_fase1.py
-────────────────────
-FASE 1 — Base completa de cruzamento SPED Fiscal x EFD Contribuicoes.
+cruzamento_oportunidades.py
+────────────────────────────
+Oportunidades — Base completa de cruzamento SPED Fiscal x EFD Contribuicoes.
 
 Orquestra a extracao de todos os blocos SPED, aplica LEFT JOINs (EFD_F como
 verdade), e enriquece os resultados com dados cadastrais (0150, 0200, 0500),
 descricoes de CFOP e de CST PIS/COFINS.
 
-Retorna um dict de DataFrames por chave de registro, pronto para excel_fase1().
+Retorna um dict de DataFrames por chave de registro, pronto para excel_oportunidades().
 """
 
 import json
 import polars as pl
 import datatricks.sped.sped_definitions as dfn
 import cruzamento.cruzamento_definition as cd
-import cruzamento.dados_uso_consumo as duc
+import cruzamento.dados_oportunidades as dop
 import cruzamento.dados_bloco_d as dbd
 
 
@@ -41,15 +41,15 @@ def _reorder_c170(df: pl.DataFrame) -> pl.DataFrame:
         f"{dfn.ID_SPED}_c", f"{dfn.ID_PAI}_c",
         "CHV_NFE_c", "NUM_DOC_c", "DT_DOC_c",
         "COD_PART_c", "COD_ITEM_c",
-        "DESCR_COMPL",
         # PIS (EFD_C)
         "CST_PIS", cd.DESCR_CST_PIS, "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         # COFINS (EFD_C)
         "CST_COFINS", cd.DESCR_CST_COFINS, "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
     ]
+    _EXCLUDE = {"DESCR_COMPL"}
     existing = set(df.columns)
     ordered = [c for c in template if c in existing]
-    placed = set(ordered)
+    placed = set(ordered) | _EXCLUDE
     for col in df.columns:
         if col not in placed:
             ordered.append(col)
@@ -271,7 +271,6 @@ def _cruzar_c170(c170_f: pl.DataFrame, c170_c: pl.DataFrame) -> pl.DataFrame:
         ("DT_DOC_c",         pl.Utf8),
         ("COD_PART_c",       pl.Utf8),
         ("COD_ITEM_c",       pl.Utf8),
-        ("DESCR_COMPL",      pl.Utf8),
         ("CST_PIS",          pl.Utf8),
         ("VL_BC_PIS",        pl.Float64),
         ("ALIQ_PIS",         pl.Float64),
@@ -388,7 +387,7 @@ def _cruzar_d190(d190_f: pl.DataFrame, d101_c: pl.DataFrame) -> pl.DataFrame:
 
 # ── Orquestrador principal ─────────────────────────────────────────────────────
 
-def executar_fase1(
+def executar_oportunidades(
     df_fiscal: pl.DataFrame,
     df_assets_f: pl.DataFrame,
     versao_f: str | None,
@@ -397,10 +396,10 @@ def executar_fase1(
     versao_c: str | None,
 ) -> dict[str, pl.DataFrame]:
     """
-    FASE 1: extrai C170 e D190, cruza EFD_F LEFT JOIN EFD_C e enriquece com cadastros.
+    Oportunidades: extrai C170 e D190, cruza EFD_F LEFT JOIN EFD_C e enriquece com cadastros.
 
     Retorna dict com chaves "C170" e "D190".
-    Passe o dict retornado para write_excel.excel_fase1().
+    Passe o dict retornado para write_excel.excel_oportunidades().
     """
     resultado: dict[str, pl.DataFrame] = {}
 
@@ -410,15 +409,15 @@ def executar_fase1(
     cst_icms_df = _carregar_cst_icms()
 
     # ── Dados cadastrais ──────────────────────────────────────────────────────
-    participantes = duc.extrair_participantes_uc(
+    participantes = dop.extrair_participantes_uc(
         df_fiscal, df_assets_f, versao_f,
         df_contribuicoes, df_assets_c, versao_c,
     )
-    itens_0200 = duc.extrair_0200_fiscal(df_fiscal, df_assets_f, versao_f)
+    itens_0200 = dop.extrair_0200_fiscal(df_fiscal, df_assets_f, versao_f)
 
     # ── C170: itens NF-e — EFD_F LEFT JOIN EFD_C ──────────────────────────────
-    c170_f = duc.extrair_c170_fiscal(df_fiscal, df_assets_f, versao_f)
-    c170_c = duc.extrair_c170_contribuicoes(df_contribuicoes, df_assets_c, versao_c)
+    c170_f = dop.extrair_c170_fiscal(df_fiscal, df_assets_f, versao_f)
+    c170_c = dop.extrair_c170_contribuicoes(df_contribuicoes, df_assets_c, versao_c)
     c170_f = _consolidar_c170(c170_f, _C170_F_SUM)
     c170_c = _consolidar_c170(c170_c, _C170_C_SUM)
     df_c170 = _cruzar_c170(c170_f, c170_c)
