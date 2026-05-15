@@ -3,6 +3,7 @@ import datatricks.io.excel_handler as eh
 import cruzamento.cruzamento_definition as cd
 import os
 import polars as pl
+import polars.datatypes as pdt
 
 
 def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
@@ -17,10 +18,9 @@ def excel_escrituracao(self, empresa, escrituracao, analise, projeto):
         projeto: Project name.
     """
     directory = os.path.dirname(os.path.abspath(__file__))
-    root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]
-    
-    cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_Check SPED x XML_v5.xlsx')
+
+    cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_Check SPED x XML_v5.xlsx')
     wb = eh.open_template(cruzamentos_file)
     company = pl.DataFrame([empresa])
 
@@ -51,7 +51,6 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
     """
     
     directory = os.path.dirname(os.path.abspath(__file__))
-    root_directory = os.path.dirname(directory)
     output_folder = self.global_params["output"]
 
     if Analitico.height > 0:
@@ -70,7 +69,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             consolidado = consolidado.drop(cd.ANO, cd.linha)
             consolidado = consolidado.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
-            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_ANALITICO.xlsx')
+            cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_ANALITICO.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
 
@@ -89,7 +88,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             Fisc = Fisc.drop(cd.ANO)
             Fisc = Fisc.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
-            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_EFDFISCAL.xlsx')
+            cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_EFDFISCAL.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
 
@@ -105,7 +104,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             contrib = contrib.drop(cd.ANO)
             contrib = contrib.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
-            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_EFDCONTRIBUICOES.xlsx')
+            cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_EFDCONTRIBUICOES.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
 
@@ -121,7 +120,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             notas = notas.drop(cd.ANO)
             notas = notas.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
-            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_NOTAS.xlsx')
+            cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_NOTAS.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
 
@@ -137,7 +136,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             nf = nf.drop(cd.ANO)
             nf = nf.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
 
-            cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_XML.xlsx')
+            cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_XML.xlsx')
             wb = eh.open_template(cruzamentos_file)
             company = pl.DataFrame([empresa])
 
@@ -153,7 +152,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
             nConsid = nConsid.drop(cd.ANO)
             nConsid = nConsid.with_columns(pl.col(cd.PERÍODO).dt.strftime("%d/%m/%Y"))
             
-        cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_XML_N_CONSIDERADOS.xlsx')
+        cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_XML_N_CONSIDERADOS.xlsx')
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])
 
@@ -163,7 +162,7 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
     
 
     if nProcessado is not None and nProcessado.height > 0:
-        cruzamentos_file = os.path.join(root_directory, 'assets\\templates\\Template_N_PROCESSADOS.xlsx')
+        cruzamentos_file = os.path.join(directory, 'assets', 'templates', 'Template_N_PROCESSADOS.xlsx')
         wb = eh.open_template(cruzamentos_file)
         company = pl.DataFrame([empresa])
 
@@ -172,66 +171,296 @@ def excel_receita(self, empresa, Contribuicoes, Fiscal, Notas, NFE, nConsiderada
         wb.save(output_folder + "\\" + "7. Apter_Não_Processados - " + projeto + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx")
     
 
-def excel_uso_consumo(self, empresa, cnpj, regime, periodo_ini, periodo_fim,
-                      resumo, detalhes, orfaos, projeto):
+def excel_fase1(self, empresa, fase1_data: dict, projeto: str, resumo_info: dict | None = None) -> None:
     """
-    Gera o workbook de Uso & Consumo usando o template padrão Taxverse.
-    Segue exatamente o mesmo padrão das demais funções de escrita:
-      - Empresa em B6 do INDICE (write_header=False)
-      - Dados em B12 de cada aba (write_header=False, colunas alinhadas ao header da linha 11)
+    Gera o workbook da FASE 1 de forma totalmente programatica.
+    Reproduz o layout Apter: logo, sem gridlines, zoom 80%, formatacao
+    condicional nas linhas 9 e 11, headers laranja, bordas, filtro e
+    formato numerico contabil brasileiro.
     """
-    directory = os.path.dirname(os.path.abspath(__file__))
-    root_directory = os.path.dirname(directory)
-    output_folder = self.global_params["output"]
+    from openpyxl import Workbook
+    from openpyxl.drawing.image import Image as XLImage
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.formatting.rule import Rule
+    from openpyxl.styles.differential import DifferentialStyle
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.hyperlink import Hyperlink
 
-    template_path = os.path.join(root_directory, cd.CAMINHO_UC_TEMPLATE.replace('src\\', ''))
+    directory     = os.path.dirname(os.path.abspath(__file__))
+    output_folder = self.global_params["output"]
+    logo_path     = os.path.join(directory, "assets", "templates", "apter_logo.png")
+
     filename = (
         output_folder + "\\"
-        + "Apter_UsoeConsumo_"
-        + projeto + "_"
-        + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        + ".xlsx"
+        + "Apter_FASE1_" + projeto + "_"
+        + datetime.now().strftime("%d-%m-%Y_%H-%M-%S") + ".xlsx"
     )
 
-    wb = eh.open_template(template_path)
-    company = pl.DataFrame([empresa])
+    # ── Constantes de estilo ─────────────────────────────────────────
+    ORANGE     = "FFFF641E"
+    DARK_RED   = "FF7E131E"
+    WHITE      = "FFFFFFFF"
+    LINK_BLUE  = "FF0070C0"
+    NAVY       = "FF2F5597"
+    DARK_GREEN = "FF375623"
+    GREEN_OK   = "FF70AD47"
+    RED_WARN   = "FFC00000"
+    NUMBER_FMT = '_(* #.##0,00_);_(* (#.##0,00);_(* "-"_);@_)'
 
-    # ÍNDICE — nome da empresa em B7 (placeholder 'APTER' no template)
-    eh.dump_data_to_sheet(
-        excel_thing=wb, data=company,
-        starting_cell='B7', write_header=False, sheet_name="ÍNDICE"
-    )
+    f10_bold        = Font(name="Calibri", size=10, bold=True)
+    f10_bold_white  = Font(name="Calibri", size=10, bold=True, color=WHITE)
+    f10_bold_orange = Font(name="Calibri", size=10, bold=True, color=ORANGE)
+    f11_bold        = Font(name="Calibri", size=11, bold=True)
+    f11_bold_white  = Font(name="Calibri", size=11, bold=True, color=WHITE)
+    f11_link        = Font(name="Calibri", size=11, underline="single", color=LINK_BLUE)
 
-    # RESUMO — colunas alinhadas à linha 11 do template:
-    # EMPRESA, CNPJ, REGIME_TRIBUTARIO, PERIODO_INI, PERIODO_FIM,
-    # TOTAL_NFS_ANALISADAS, TOTAL_ITENS_CRUZADOS, TOTAL_ITENS_USO_CONSUMO,
-    # TOTAL_ELEGIVEL, TOTAL_REVISAO, TOTAL_NAO_ELEGIVEL, TOTAL_ORFAOS,
-    # VL_CREDITO_PIS, VL_CREDITO_COFINS, VL_CREDITO_TOTAL
-    if resumo is not None and resumo.height > 0:
-        eh.dump_data_to_sheet(
-            excel_thing=wb, data=resumo,
-            starting_cell='B12', write_header=False, sheet_name="RESUMO"
-        )
+    fill_white  = PatternFill("solid", fgColor=WHITE)
+    fill_orange = PatternFill("solid", fgColor=ORANGE)
 
-    # DETALHES — colunas alinhadas à linha 11 do template (22 colunas B→W):
-    # ITEM_KEY, CHV_NFE, COD_PART, RAZAO_SOCIAL, CNPJ_EMIT, NUM_DOC, SER,
-    # DT_DOC, CFOP, DESCR_COMPL, CST_PIS, CST_COFINS, ALIQ_PIS, ALIQ_COFINS,
-    # VL_ITEM, VL_BC_PIS, VL_BC_COFINS, ELEGIBILIDADE,
-    # VL_CREDITO_PIS, VL_CREDITO_COFINS, VL_CREDITO_TOTAL, OBSERVACOES
-    if detalhes is not None and detalhes.height > 0:
-        eh.dump_data_to_sheet(
-            excel_thing=wb, data=detalhes,
-            starting_cell='B12', write_header=False, sheet_name="DETALHES"
-        )
+    GRUPO_FILLS = {
+        "EFD ICMS IPI":      PatternFill("solid", fgColor=NAVY),
+        "CHAVE":             PatternFill("solid", fgColor=ORANGE),
+        "EFD Contribuicoes": PatternFill("solid", fgColor=DARK_GREEN),
+    }
+    GRUPO_LABELS = {
+        "EFD ICMS IPI":      "EFD ICMS IPI",
+        "CHAVE":             "CHAVE",
+        "EFD Contribuicoes": "EFD Contribuições",
+    }
 
-    # ORFAOS — colunas alinhadas à linha 11 do template (8 colunas B→I):
-    # CHAVE_NF, CHV_NFE, COD_PART, NUM_DOC, SER, DT_DOC, VL_DOC, OBRIGACAO_FALTANTE
-    if orfaos is not None and orfaos.height > 0:
-        eh.dump_data_to_sheet(
-            excel_thing=wb, data=orfaos,
-            starting_cell='B12', write_header=False, sheet_name="ORFAOS"
-        )
+    align_left   = Alignment(horizontal="left")
+    align_center = Alignment(horizontal="center")
+
+    border_bottom_orange = Border(bottom=Side(style="thin", color=ORANGE))
+
+    SUBTITULOS = {
+        "RESUMO": "Resumo de Processamento e Validacoes",
+        "C170":   "C170 - Itens NF-e (EFD Fiscal x EFD Contribuicoes)",
+        "D190":   "D190 - CT-e Itens (EFD Fiscal x EFD Contribuicoes)",
+    }
+
+    # ── Setup de cada aba ────────────────────────────────────────────
+    def _setup_sheet(ws, nome_aba: str) -> None:
+        ws.sheet_view.showGridLines   = False
+        ws.sheet_view.zoomScale       = 80
+        ws.sheet_view.zoomScaleNormal = 80
+        ws.column_dimensions["A"].width = 2.63
+        ws.column_dimensions["B"].width = 22
+
+        img        = XLImage(logo_path)
+        img.anchor = "A1"
+        img.width  = 255
+        img.height = 52
+        ws.add_image(img)
+
+        ws["B7"].value = empresa
+        ws["B7"].font  = f10_bold
+
+        c8           = ws["B8"]
+        c8.value     = SUBTITULOS[nome_aba]
+        c8.font      = f10_bold_orange
+        c8.fill      = fill_white
+        c8.alignment = align_left
+
+        ws["B9"].border = border_bottom_orange
+
+        if nome_aba != "RESUMO":
+            dxf_11 = DifferentialStyle(
+                font   = Font(bold=True, color=WHITE),
+                fill   = PatternFill(bgColor="FF641E"),
+                border = Border(top=Side(style="thin", color="7E131E")),
+            )
+            ws.conditional_formatting.add(
+                "B11:BZ11",
+                Rule(type="expression", formula=['LEN(TRIM(B11))>0'],
+                     dxf=dxf_11, priority=1),
+            )
+
+    # ── Atribuição de grupos por coluna ──────────────────────────────
+    def _assign_grupos(cols: list) -> list:
+        chave_cols = {"ITEM_KEY", cd.EM_EFD_C}
+        if cd.EXCLUSIVO_EFD_C in cols:
+            return ["EFD Contribuicoes"] * len(cols)
+        state  = "EFD ICMS IPI"
+        grupos = []
+        for col in cols:
+            if col in chave_cols:
+                state = "CHAVE"
+            elif state == "CHAVE":
+                state = "EFD Contribuicoes"
+            grupos.append(state)
+        return grupos
+
+    # ── Escrever dados nas abas transacionais ────────────────────────
+    def _escrever_aba(sheet_name: str, df: pl.DataFrame) -> None:
+        ws     = wb[sheet_name]
+        cols   = list(df.columns)
+        n_cols = len(cols)
+        grupos = _assign_grupos(cols)
+
+        # Colunas numéricas pelo schema do Polars
+        _NUMERIC = (pdt.Float32, pdt.Float64, pdt.Int8, pdt.Int16,
+                    pdt.Int32, pdt.Int64, pdt.UInt8, pdt.UInt16,
+                    pdt.UInt32, pdt.UInt64)
+
+        # Linha 10: labels de grupo com merge
+        i = 0
+        while i < len(grupos):
+            grp = grupos[i]
+            j   = i
+            while j < len(grupos) and grupos[j] == grp:
+                j += 1
+            col_start = i + 2
+            col_end   = j - 1 + 2
+            if col_start < col_end:
+                ws.merge_cells(
+                    start_row=10, start_column=col_start,
+                    end_row=10,   end_column=col_end,
+                )
+            cell           = ws.cell(10, col_start, GRUPO_LABELS[grp])
+            cell.fill      = GRUPO_FILLS[grp]
+            cell.font      = f10_bold_white
+            cell.alignment = align_center
+            i = j
+
+        # Linha 11: headers
+        for j, col in enumerate(cols, start=2):
+            cell           = ws.cell(11, j, col)
+            cell.font      = f11_bold
+            cell.alignment = align_center
+        ws.auto_filter.ref = f"B11:{get_column_letter(1 + n_cols)}11"
+
+        # Aplica number_format via column_dimensions — O(n_colunas), não O(linhas × colunas)
+        # Células sem formato explícito herdam o formato da coluna no Excel
+        for j, dtype in enumerate(df.dtypes):
+            if isinstance(dtype, _NUMERIC):
+                ws.column_dimensions[get_column_letter(j + 2)].number_format = NUMBER_FMT
+
+        # Linha 12+: dados via append
+        for row_data in df.iter_rows(named=False):
+            ws.append([None] + list(row_data))
+
+    # ── Escrever aba RESUMO ──────────────────────────────────────────
+    def _write_resumo(ws) -> None:
+        ri = resumo_info or {}
+
+        def _sec(row: int, label: str) -> None:
+            c           = ws.cell(row, 2, label)
+            c.font      = f11_bold_white
+            c.fill      = fill_orange
+            c.alignment = align_left
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=8)
+
+        def _header_row(row: int, labels: list[str]) -> None:
+            for j, lbl in enumerate(labels, start=2):
+                c           = ws.cell(row, j, lbl)
+                c.font      = f11_bold_white
+                c.fill      = PatternFill("solid", fgColor=DARK_RED)
+                c.alignment = align_center
+
+        def _status_cell(row: int, col: int, ok: bool) -> None:
+            c      = ws.cell(row, col, "OK" if ok else "ATENÇÃO")
+            c.font = Font(name="Calibri", size=10, bold=True,
+                          color=GREEN_OK if ok else RED_WARN)
+
+        def _presence_cell(row: int, col: int, present: bool) -> None:
+            c      = ws.cell(row, col, "Sim" if present else "Não")
+            c.font = Font(name="Calibri", size=10, bold=True,
+                          color=GREEN_OK if present else RED_WARN)
+            c.alignment = align_center
+
+        current = 11
+
+        # ── Identificação ────────────────────────────────────────────
+        _sec(current, "IDENTIFICAÇÃO"); current += 1
+        _header_row(current, ["Campo", "EFD Fiscal", "EFD Contribuições"]); current += 1
+
+        rows_id = [
+            ("Empresa",     ri.get("empresa", ""),    ri.get("empresa", "")),
+            ("CNPJ",        ri.get("cnpj_f", ""),     ri.get("cnpj_c", "")),
+            ("Versão SPED", ri.get("versao_f") or "N/A", ri.get("versao_c") or "N/A"),
+        ]
+        for label, val_f, val_c in rows_id:
+            ws.cell(current, 2, label).font      = f10_bold
+            ws.cell(current, 2).alignment        = align_left
+            ws.cell(current, 3, str(val_f)).alignment = align_left
+            ws.cell(current, 4, str(val_c)).alignment = align_left
+            current += 1
+
+        current += 1
+        # ── Cobertura por período ─────────────────────────────────────
+        _sec(current, "COBERTURA"); current += 1
+        _header_row(current, ["Período", "EFD Fiscal", "EFD Contribuições", "Coincidente"]); current += 1
+
+        cobertura = ri.get("cobertura", {})
+        for periodo, pres in sorted(cobertura.items()):
+            tem_f = pres.get("f", False)
+            tem_c = pres.get("c", False)
+            coincide = tem_f and tem_c
+            ws.cell(current, 2, periodo).alignment = align_center
+            _presence_cell(current, 3, tem_f)
+            _presence_cell(current, 4, tem_c)
+            _status_cell(current, 5, coincide)
+            current += 1
+
+        current += 1
+        # ── Validações ───────────────────────────────────────────────
+        _sec(current, "VALIDAÇÕES"); current += 1
+        _header_row(current, ["Verificação", "Status", "Detalhe"]); current += 1
+
+        cnpjs_f     = set(ri.get("cnpjs_f", []))
+        cnpjs_c     = set(ri.get("cnpjs_c", []))
+        todos_cnpjs = cnpjs_f | cnpjs_c
+        cnpj_ok     = len(todos_cnpjs) <= 1
+        tem_f_flag  = ri.get("tem_efdf", False)
+        tem_c_flag  = ri.get("tem_efdc", False)
+
+        validacoes = [
+            ("CNPJ único", cnpj_ok,
+             "OK" if cnpj_ok
+             else f"ATENÇÃO: {len(todos_cnpjs)} CNPJs distintos: {', '.join(sorted(todos_cnpjs))}"),
+            ("Possui EFD Fiscal", tem_f_flag,
+             "Sim" if tem_f_flag else "Não — cruzamento sem EFD Fiscal"),
+            ("Possui EFD Contribuições", tem_c_flag,
+             "Sim" if tem_c_flag else "Não — cruzamento sem EFD Contribuições"),
+        ]
+        for label, ok, detalhe in validacoes:
+            ws.cell(current, 2, label).font       = f10_bold
+            ws.cell(current, 2).alignment         = align_left
+            _status_cell(current, 3, ok)
+            ws.cell(current, 4, detalhe).alignment = align_left
+            current += 1
+
+        current += 1
+        # ── Abas disponíveis ─────────────────────────────────────────
+        _sec(current, "ABAS DISPONÍVEIS"); current += 1
+        return current
+
+    # ── Criar workbook ───────────────────────────────────────────────
+    wb              = Workbook()
+    ws_resumo       = wb.active
+    ws_resumo.title = "RESUMO"
+    _setup_sheet(ws_resumo, "RESUMO")
+
+    for nome in ["C170", "D190"]:
+        _setup_sheet(wb.create_sheet(nome), nome)
+
+    for key in ["C170", "D190"]:
+        df = fase1_data.get(key)
+        if df is not None and not df.is_empty():
+            _escrever_aba(key, df)
+
+    # ── RESUMO ───────────────────────────────────────────────────────
+    last_content_row = _write_resumo(ws_resumo)
+
+    sheets_com_dados = [
+        k for k in ["C170", "D190"]
+        if (df := fase1_data.get(k)) is not None and not df.is_empty()
+    ]
+    for i, sname in enumerate(sheets_com_dados, start=last_content_row):
+        cell           = ws_resumo.cell(i, 2, sname)
+        cell.hyperlink = Hyperlink(ref=cell.coordinate, location=f"{sname}!A1")
+        cell.font      = f11_link
 
     wb.save(filename)
-    self.logger.info(f"[U&C] Output salvo (template): {filename}")
-
+    self.logger.info(f"[FASE1] Output salvo: {filename}")

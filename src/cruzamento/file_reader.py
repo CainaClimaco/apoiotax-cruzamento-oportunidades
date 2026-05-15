@@ -6,24 +6,6 @@ import datatricks.sped.conversor_xml as cx
 
 
 def renomear_colunas(df, mapping: dict[str, str]):
-    """
-    Description:
-        Renames the Dataframe columns based on a definition file.
-    Parameters:
-        df: Original Dataframe in which the columns will be renamed.
-        mapping: Dictionary mapping the column names.
-    Returns:
-        Dataframe with the columns renamed. 
-    # """
-
-    
-    # return df.rename({
-    #     next((old for old in (v if isinstance(v, list) else [v]) if old in df.columns), None): new
-    #     for new, v in mapping.items()
-    #     if any(old in df.columns for old in (v if isinstance(v, list) else [v]))
-    # })
-    
-    
     exprs = []
     for novo_nome, nomes_antigos in mapping.items():
         nomes = [nomes_antigos] if isinstance(nomes_antigos, str) else nomes_antigos
@@ -31,12 +13,6 @@ def renomear_colunas(df, mapping: dict[str, str]):
         if colunas_existentes:
             exprs.append(pl.coalesce(colunas_existentes).alias(novo_nome))
     return df.select(exprs + [pl.col(c) for c in df.columns if c not in sum([v if isinstance(v, list) else [v] for v in mapping.values()], [])])
-
-
-
-
-    # rename_dict = {v: k for k,v in mapping.items()}
-    # return df.rename(rename_dict)
 
 
 def leitor_sped(inbound, obrigacao, sped_type, definition, registros, path_env):

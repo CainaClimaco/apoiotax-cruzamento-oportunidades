@@ -33,44 +33,10 @@ def _to_float(df: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
     return df.with_columns(exprs) if exprs else df
 
 
-# ─── Regime tributário ───────────────────────────────────────────────────────
-
-def identificar_regime(
-    df_contribuicoes: pl.DataFrame,
-    df_assets: pl.DataFrame,
-    versao: str | None,
-) -> tuple[str, str | None]:
-    """
-    Reads the COD_INC_TRIB field from the 0000 record of EFD Contribuições.
-
-    Returns:
-        regime: human-readable regime label (cd.REGIME_REAL / cd.REGIME_PRESUMIDO)
-        cod_inc_trib: raw value from the SPED ("1", "2", "3", ...)
-    """
-    if df_contribuicoes.is_empty() or versao is None:
-        return cd.REGIME_OUTRO, None
-
-    reg_0000 = df_contribuicoes.filter(pl.col(dfn.REGISTRO) == "0000")
-    if reg_0000.is_empty():
-        return cd.REGIME_OUTRO, None
-
-    try:
-        reg_0000 = rename_columns(reg_0000, df_assets, versao, "0000")
-    except Exception:
-        return cd.REGIME_OUTRO, None
-
-    if cd.COD_INC_TRIB not in reg_0000.columns:
-        return cd.REGIME_OUTRO, None
-
-    cod = reg_0000.select(pl.col(cd.COD_INC_TRIB)).item(0, 0)
-    cod = str(cod).strip() if cod is not None else None
-
-    if cod == "1":
-        return cd.REGIME_REAL, cod
-    elif cod in ("2", "3"):
-        return cd.REGIME_PRESUMIDO, cod
-    else:
-        return cd.REGIME_OUTRO, cod
+def _cast_id_to_str(df: pl.DataFrame) -> pl.DataFrame:
+    """Cast ID-SPED and ID-PAI to Utf8 text."""
+    exprs = [pl.col(c).cast(pl.Utf8) for c in [dfn.ID_SPED, dfn.ID_PAI] if c in df.columns]
+    return df.with_columns(exprs) if exprs else df
 
 
 # ─── EFD ICMS IPI extractors ─────────────────────────────────────────────────
@@ -132,7 +98,7 @@ def extrair_c170_fiscal(
 
     # 1. Forward-fill C100 computed columns to C170 rows.
     #    Only the columns that actually exist in this leitor_sped output.
-    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100"] if c in df_fiscal.columns]
+    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_fiscal.columns]
     if ff_cols:
         periodo_col = dfn.PERIODO if dfn.PERIODO in df_fiscal.columns else "Periodo"
         df_enriched = df_fiscal.sort(dfn.ID_SPED).with_columns([
@@ -153,15 +119,19 @@ def extrair_c170_fiscal(
     # 4. Select desired columns (CHV_NFE/COD_SIT survived rename as they don't
     #    start with 'field_' and weren't in the positional rename mapping).
     desired = [
+        dfn.PERIODO, dfn.CNPJ,
         dfn.ID_SPED, dfn.ID_PAI,
         "NUM_ITEM", "COD_ITEM", "DESCR_COMPL",
         "VL_ITEM", "CFOP", "CST_ICMS", "ALIQ_ICMS", "VL_ICMS",
         cd.CHV_NFE,   # forward-filled from parent C100
         cd.COD_SIT,   # forward-filled from parent C100
         cd.COD_PART,  # forward-filled from parent C100
+        "NUM_DOC",    # forward-filled from parent C100
+        "DT_DOC",     # forward-filled from parent C100
     ]
     result = _safe_select(renamed, desired)
-    return _to_float(result, ["VL_ITEM", "ALIQ_ICMS", "VL_ICMS"])
+    result = _to_float(result, ["VL_ITEM", "ALIQ_ICMS", "VL_ICMS"])
+    return _cast_id_to_str(result)
 
 
 # ─── EFD Contribuições extractors ────────────────────────────────────────────
@@ -214,8 +184,8 @@ def extrair_c170_contribuicoes(
     if df_contribuicoes.is_empty() or versao is None:
         return pl.DataFrame()
 
-    # Forward-fill CHV_NFE / COD_SIT from C100 to C170 (same logic as fiscal)
-    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100"] if c in df_contribuicoes.columns]
+    # Forward-fill CHV_NFE / COD_SIT / NUM_DOC / DT_DOC from C100 to C170
+    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_contribuicoes.columns]
     if ff_cols:
         periodo_col = dfn.PERIODO if dfn.PERIODO in df_contribuicoes.columns else "Periodo"
         df_enriched = df_contribuicoes.sort(dfn.ID_SPED).with_columns([
@@ -236,15 +206,18 @@ def extrair_c170_contribuicoes(
         "NUM_ITEM", "COD_ITEM",
         "CST_PIS", "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         "CST_COFINS", "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
+        "NATBC_CRED", "IND_ORIG_CRED",
         cd.CHV_NFE,   # forward-filled from parent C100
-        cd.COD_SIT,   # forward-filled from parent C100
         cd.COD_PART,  # forward-filled from parent C100
+        "NUM_DOC",    # forward-filled from parent C100
+        "DT_DOC",     # forward-filled from parent C100
     ]
     result = _safe_select(renamed, desired)
-    return _to_float(result, [
+    result = _to_float(result, [
         "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
     ])
+    return _cast_id_to_str(result)
 
 
 # ─── Participants (0150) ─────────────────────────────────────────────────────
@@ -260,8 +233,8 @@ def extrair_participantes_uc(
     """
     Builds a unified participants lookup table (0150) from both EFDs.
 
-    Returns columns: COD_PART, NOME_DEST (razão social), CNPJ_DEST
-    Deduplicates by COD_PART, preferring entries with non-null CNPJ_DEST.
+    Returns columns: ID_SPED, COD_PART, RAZAO_SOCIAL, CNPJ_EMIT
+    Deduplicates by [ID_SPED, COD_PART], preferring entries with non-null CNPJ_EMIT.
     """
     frames = []
 
@@ -282,7 +255,7 @@ def extrair_participantes_uc(
 
             # Pick whichever CNPJ column exists in this EFD's 0150 layout
             cnpj_col = next((c for c in CNPJ_CANDIDATES if c in renamed.columns), None)
-            desired = [c for c in ["COD_PART", "NOME", cnpj_col] if c is not None]
+            desired = [c for c in [dfn.ID_SPED, "COD_PART", "NOME", cnpj_col] if c is not None]
             selected = _safe_select(renamed, desired)
 
             if "NOME" in selected.columns:
@@ -295,19 +268,132 @@ def extrair_participantes_uc(
             continue
 
     if not frames:
-        return pl.DataFrame({"COD_PART": [], cd.RAZAO_SOCIAL: [], "CNPJ_EMIT": []})
+        return pl.DataFrame({dfn.ID_SPED: [], "COD_PART": [], cd.RAZAO_SOCIAL: [], "CNPJ_EMIT": []})
 
     participantes = pl.concat(frames, how="diagonal")
 
-    # Prefer rows with CNPJ filled; keep one per COD_PART
-    # Guard: sort on CNPJ_EMIT only if the column actually exists
+    # Prefer rows with CNPJ filled; keep one per [ID_SPED, COD_PART]
+    dedup_cols = [c for c in [dfn.ID_SPED, "COD_PART"] if c in participantes.columns]
     if "CNPJ_EMIT" in participantes.columns:
         participantes = (
             participantes
             .sort("CNPJ_EMIT", nulls_last=True)
-            .unique(subset=["COD_PART"], keep="first")
+            .unique(subset=dedup_cols or ["COD_PART"], keep="first")
         )
     else:
-        participantes = participantes.unique(subset=["COD_PART"], keep="first")
+        participantes = participantes.unique(subset=dedup_cols or ["COD_PART"], keep="first")
 
-    return participantes
+    return _cast_id_to_str(participantes)
+
+
+# ─── C190 (ICMS analytical summary) ──────────────────────────────────────────
+
+def extrair_c190_fiscal(
+    df_fiscal: pl.DataFrame,
+    df_assets: pl.DataFrame,
+    versao: str | None,
+) -> pl.DataFrame:
+    """
+    Extracts C190 (ICMS analytical summary by CFOP/CST) from EFD ICMS IPI.
+
+    C190 is a period-level summary that aggregates C170 items by CFOP and CST.
+    It has no direct counterpart in EFD Contribuições (standalone EFD_F output).
+
+    Columns returned: ID_SPED, CST_ICMS, CFOP, ALIQ_ICMS, VL_OPR,
+                      VL_BC_ICMS, VL_ICMS, VL_BC_ICMS_ST, VL_ICMS_ST, VL_RED_BC, VL_IPI
+    """
+    if df_fiscal.is_empty() or versao is None:
+        return pl.DataFrame()
+
+    raw = df_fiscal.filter(pl.col(dfn.REGISTRO) == "C190")
+    if raw.is_empty():
+        return pl.DataFrame()
+
+    try:
+        renamed = rename_columns(raw, df_assets, versao, "C190")
+    except Exception:
+        renamed = raw
+
+    desired = [
+        dfn.PERIODO, dfn.CNPJ,
+        dfn.ID_SPED, dfn.ID_PAI,
+        "CST_ICMS", "CFOP", "ALIQ_ICMS", "VL_OPR",
+        "VL_BC_ICMS", "VL_ICMS", "VL_BC_ICMS_ST", "VL_ICMS_ST",
+        "VL_RED_BC", "VL_IPI",
+    ]
+    result = _safe_select(renamed, desired)
+    result = _to_float(result, [
+        "ALIQ_ICMS", "VL_OPR", "VL_BC_ICMS", "VL_ICMS",
+        "VL_BC_ICMS_ST", "VL_ICMS_ST", "VL_RED_BC", "VL_IPI",
+    ])
+    return _cast_id_to_str(result)
+
+
+# ─── Products (0200) ─────────────────────────────────────────────────────────
+
+def extrair_0200_fiscal(
+    df_fiscal: pl.DataFrame,
+    df_assets: pl.DataFrame,
+    versao: str | None,
+) -> pl.DataFrame:
+    """
+    Extracts 0200 (product/item master) from EFD ICMS IPI.
+
+    Returns columns: ID_SPED, COD_ITEM, DESCR_ITEM, UNID_INV, TIPO_ITEM, COD_NCM
+    Deduplicates by [ID_SPED, COD_ITEM].
+    """
+    if df_fiscal.is_empty() or versao is None:
+        return pl.DataFrame()
+
+    raw = df_fiscal.filter(pl.col(dfn.REGISTRO) == "0200")
+    if raw.is_empty():
+        return pl.DataFrame()
+
+    try:
+        renamed = rename_columns(raw, df_assets, versao, "0200")
+    except Exception:
+        renamed = raw
+
+    desired = [dfn.ID_SPED, "COD_ITEM", "DESCR_ITEM", "UNID_INV", "TIPO_ITEM", "COD_NCM"]
+    result = _safe_select(renamed, desired)
+    if result.is_empty():
+        return pl.DataFrame()
+
+    dedup_cols = [c for c in [dfn.ID_SPED, "COD_ITEM"] if c in result.columns]
+    result = result.unique(subset=dedup_cols or ["COD_ITEM"], keep="first")
+    return _cast_id_to_str(result)
+
+
+# ─── Accounts (0500) ─────────────────────────────────────────────────────────
+
+def extrair_0500_fiscal(
+    df_fiscal: pl.DataFrame,
+    df_assets: pl.DataFrame,
+    versao: str | None,
+) -> pl.DataFrame:
+    """
+    Extracts 0500 (accounting chart of accounts) from EFD ICMS IPI.
+
+    Returns columns: ID_SPED, COD_CTA, NOME_CTA, COD_NAT_CC
+    Deduplicates by [ID_SPED, COD_CTA].
+    """
+    if df_fiscal.is_empty() or versao is None:
+        return pl.DataFrame()
+
+    raw = df_fiscal.filter(pl.col(dfn.REGISTRO) == "0500")
+    if raw.is_empty():
+        return pl.DataFrame()
+
+    try:
+        renamed = rename_columns(raw, df_assets, versao, "0500")
+    except Exception:
+        renamed = raw
+
+    desired = [dfn.ID_SPED, "COD_CTA", "NOME_CTA", "COD_NAT_CC"]
+    result = _safe_select(renamed, desired)
+    if result.is_empty():
+        return pl.DataFrame()
+
+    dedup_cols = [c for c in [dfn.ID_SPED, "COD_CTA"] if c in result.columns]
+    result = result.unique(subset=dedup_cols or ["COD_CTA"], keep="first")
+    return _cast_id_to_str(result)
