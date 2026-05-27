@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .vscode/
+.claude/
 
 # Translations
 *.mo
@@ -134,3 +135,10 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 *.env
+
+# Bases de dados grandes (YXDB / Parquet — nao versionar)
+src/cruzamento/assets/*.yxdb
+src/cruzamento/assets/*.parquet
+
+# Outputs gerados
+*.xlsx

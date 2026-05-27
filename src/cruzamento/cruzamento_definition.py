@@ -93,8 +93,19 @@ NATBC_CRED       = "NATBC_CRED"
 IND_ORIG_CRED    = "IND_ORIG_CRED"
 EM_EFD_C         = "EM_EFD_C"
 EXCLUSIVO_EFD_C  = "EXCLUSIVO_EFD_C"
-CAMINHO_CST_PIS_COFINS = 'src\\cruzamento\\assets\\CST_PIS_COFINS.json'
-CAMINHO_CST_ICMS       = 'src\\cruzamento\\assets\\CST_ICMS.json'
+UF_EMIT          = "UF_EMIT"
+CAMINHO_CST_PIS_COFINS  = 'src\\cruzamento\\assets\\CST_PIS_COFINS.json'
+CAMINHO_CST_ICMS        = 'src\\cruzamento\\assets\\CST_ICMS.json'
+
+# ── CNAE / Simples Nacional ────────────────────────────────────────
+CNAE_PRINCIPAL       = "CNAE_PRINCIPAL"
+ATIVIDADE_PRINCIPAL  = "ATIVIDADE_PRINCIPAL"
+CNAE_SECUNDARIA      = "CNAE_SECUNDARIA"
+ATIVIDADE_SECUNDARIA = "ATIVIDADE_SECUNDARIA"
+OPCAO_SIMPLES        = "OPCAO_SIMPLES"
+
+CAMINHO_ESTABELECIMENTO = 'src\\cruzamento\\assets\\ESTABELECIMENTO.parquet'
+CAMINHO_SIMPLES         = 'src\\cruzamento\\assets\\SIMPLES.parquet'
 
 escrituracao = 'EFD_F_X_EFD_C_X_NF-E_(ESCRITURACAO)'
 receita = 'EFD_F_X_EFD_C_X_NF-E_(RECEITA)'
@@ -106,7 +117,7 @@ CAMINHO_XML_CFOP = 'src\\cruzamento\\assets\\XML_CFOPs.xlsx'
 CAMINHO_CFOP = 'src\\cruzamento\\assets\\CFOP.xlsx'
 CAMINHO_COD_SIT = 'src\\cruzamento\\assets\\COD_SIT.xlsx'
 json_path = "src\\cruzamento\\assets\\registros.json"
-status_txt = "Arquivo TXT fora do padrão EFD ICMS/IPI"
+status_txt = "Arquivo TXT fora do padrão (EFD ICMS/IPI ou EFD Contribuições)"
 status_xml = "Arquivo XML fora do padrão nota fiscal eletrônica (NF-e) - Modelo 55"
 status_nfe = "Nota fiscal eletrônica (NF-e) duplicada"
 NFe = "NFE"
@@ -138,6 +149,7 @@ EFDF = {
         CNPJ: 'Quebra CNPJ',
         },
         "C100": {
+        IND_OPER: "field_3",
         COD_SIT: "field_7",
         CHV_NFE: "field_10",
         COD_PART: "field_5"

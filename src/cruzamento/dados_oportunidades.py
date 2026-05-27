@@ -14,6 +14,16 @@ import cruzamento.cruzamento_definition as cd
 from cruzamento.dados_receita import rename_columns
 
 
+_IBGE_UF = {
+    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA",
+    "16": "AP", "17": "TO", "21": "MA", "22": "PI", "23": "CE",
+    "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE",
+    "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP",
+    "41": "PR", "42": "SC", "43": "RS", "50": "MS", "51": "MT",
+    "52": "GO", "53": "DF",
+}
+
+
 # ─── Internal helpers ────────────────────────────────────────────────────────
 
 def _safe_select(df: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
@@ -34,8 +44,8 @@ def _to_float(df: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
 
 
 def _cast_id_to_str(df: pl.DataFrame) -> pl.DataFrame:
-    """Cast ID-SPED and ID-PAI to Utf8 text."""
-    exprs = [pl.col(c).cast(pl.Utf8) for c in [dfn.ID_SPED, dfn.ID_PAI] if c in df.columns]
+    """Cast ID-SPED, ID-PAI and ID-REG to Utf8 text."""
+    exprs = [pl.col(c).cast(pl.Utf8) for c in [dfn.ID_SPED, dfn.ID_PAI, dfn.ID_REG] if c in df.columns]
     return df.with_columns(exprs) if exprs else df
 
 
@@ -98,7 +108,7 @@ def extrair_c170_fiscal(
 
     # 1. Forward-fill C100 computed columns to C170 rows.
     #    Only the columns that actually exist in this leitor_sped output.
-    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_fiscal.columns]
+    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, cd.IND_OPER, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_fiscal.columns]
     if ff_cols:
         periodo_col = dfn.PERIODO if dfn.PERIODO in df_fiscal.columns else "Periodo"
         df_enriched = df_fiscal.sort(dfn.ID_SPED).with_columns([
@@ -123,11 +133,13 @@ def extrair_c170_fiscal(
         dfn.ID_SPED, dfn.ID_PAI,
         "NUM_ITEM", "COD_ITEM", "DESCR_COMPL",
         "VL_ITEM", "CFOP", "CST_ICMS", "ALIQ_ICMS", "VL_ICMS",
-        cd.CHV_NFE,   # forward-filled from parent C100
-        cd.COD_SIT,   # forward-filled from parent C100
-        cd.COD_PART,  # forward-filled from parent C100
-        "NUM_DOC",    # forward-filled from parent C100
-        "DT_DOC",     # forward-filled from parent C100
+        "COD_CTA",     # conta contábil do item (último campo C170)
+        cd.CHV_NFE,    # forward-filled from parent C100
+        cd.COD_SIT,    # forward-filled from parent C100
+        cd.COD_PART,   # forward-filled from parent C100
+        cd.IND_OPER,   # forward-filled from parent C100
+        "NUM_DOC",     # forward-filled from parent C100
+        "DT_DOC",      # forward-filled from parent C100
     ]
     result = _safe_select(renamed, desired)
     result = _to_float(result, ["VL_ITEM", "ALIQ_ICMS", "VL_ICMS"])
@@ -184,8 +196,8 @@ def extrair_c170_contribuicoes(
     if df_contribuicoes.is_empty() or versao is None:
         return pl.DataFrame()
 
-    # Forward-fill CHV_NFE / COD_SIT / NUM_DOC / DT_DOC from C100 to C170
-    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_contribuicoes.columns]
+    # Forward-fill CHV_NFE / COD_SIT / IND_OPER / NUM_DOC / DT_DOC from C100 to C170
+    ff_cols = [c for c in [cd.CHV_NFE, cd.COD_SIT, cd.COD_PART, cd.IND_OPER, "COD_PART_C100", "NUM_DOC", "DT_DOC"] if c in df_contribuicoes.columns]
     if ff_cols:
         periodo_col = dfn.PERIODO if dfn.PERIODO in df_contribuicoes.columns else "Periodo"
         df_enriched = df_contribuicoes.sort(dfn.ID_SPED).with_columns([
@@ -204,16 +216,20 @@ def extrair_c170_contribuicoes(
     desired = [
         dfn.ID_SPED, dfn.ID_PAI,
         "NUM_ITEM", "COD_ITEM",
+        "DESCR_COMPL",                  # nativo no layout EFDC C170
+        "VL_ITEM",                      # nativo no layout EFDC C170
         "CST_PIS", "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         "CST_COFINS", "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
         "NATBC_CRED", "IND_ORIG_CRED",
-        cd.CHV_NFE,   # forward-filled from parent C100
-        cd.COD_PART,  # forward-filled from parent C100
-        "NUM_DOC",    # forward-filled from parent C100
-        "DT_DOC",     # forward-filled from parent C100
+        cd.IND_OPER,                    # do join com C100 EFDC
+        cd.CHV_NFE,                     # forward-filled from parent C100
+        cd.COD_PART,                    # forward-filled from parent C100
+        "NUM_DOC",                      # forward-filled from parent C100
+        "DT_DOC",                       # forward-filled from parent C100
     ]
     result = _safe_select(renamed, desired)
     result = _to_float(result, [
+        "VL_ITEM",
         "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
     ])
@@ -233,7 +249,9 @@ def extrair_participantes_uc(
     """
     Builds a unified participants lookup table (0150) from both EFDs.
 
-    Returns columns: ID_SPED, COD_PART, RAZAO_SOCIAL, CNPJ_EMIT
+    Returns columns: ID_SPED, COD_PART, RAZAO_SOCIAL, CNPJ_EMIT, UF_EMIT
+    UF_EMIT is derived from COD_MUN (IBGE code, optional field): first 2 digits
+    map to the state abbreviation. Null when COD_MUN is absent or not filled.
     Deduplicates by [ID_SPED, COD_PART], preferring entries with non-null CNPJ_EMIT.
     """
     frames = []
@@ -255,33 +273,52 @@ def extrair_participantes_uc(
 
             # Pick whichever CNPJ column exists in this EFD's 0150 layout
             cnpj_col = next((c for c in CNPJ_CANDIDATES if c in renamed.columns), None)
-            desired = [c for c in [dfn.ID_SPED, "COD_PART", "NOME", cnpj_col] if c is not None]
+            desired = [c for c in [dfn.ID_SPED, "COD_PART", "NOME", cnpj_col, "COD_MUN"] if c is not None]
             selected = _safe_select(renamed, desired)
+
+            # leitor_sped extrai o NOME do participante 0150 diretamente da posição
+            # correta no arquivo bruto (NOME_DEST). Usar como fonte primária evita
+            # que rename_columns propague o NOME da empresa (0000) no lugar do NOME
+            # do participante, o que ocorre quando a hierarquia de assets do EFDC
+            # posiciona os campos de forma diferente do EFDF.
+            if cd.NOME_DEST in raw.columns:
+                selected = selected.with_columns(
+                    raw[cd.NOME_DEST].alias("NOME")
+                )
 
             if "NOME" in selected.columns:
                 selected = selected.rename({"NOME": cd.RAZAO_SOCIAL})
             if cnpj_col and cnpj_col in selected.columns:
                 selected = selected.rename({cnpj_col: "CNPJ_EMIT"})
 
+            if "COD_MUN" in selected.columns:
+                selected = selected.with_columns(
+                    pl.col("COD_MUN")
+                    .cast(pl.Utf8)
+                    .str.zfill(7)
+                    .str.slice(0, 2)
+                    .replace(_IBGE_UF, default=None)
+                    .alias("UF_EMIT")
+                ).drop("COD_MUN")
+
             frames.append(selected)
         except Exception:
             continue
 
     if not frames:
-        return pl.DataFrame({dfn.ID_SPED: [], "COD_PART": [], cd.RAZAO_SOCIAL: [], "CNPJ_EMIT": []})
+        return pl.DataFrame({dfn.ID_SPED: [], "COD_PART": [], cd.RAZAO_SOCIAL: [], "CNPJ_EMIT": [], "UF_EMIT": []})
 
     participantes = pl.concat(frames, how="diagonal")
 
-    # Prefer rows with CNPJ filled; keep one per [ID_SPED, COD_PART]
-    dedup_cols = [c for c in [dfn.ID_SPED, "COD_PART"] if c in participantes.columns]
+    # Prefer rows with CNPJ filled; keep one per COD_PART
     if "CNPJ_EMIT" in participantes.columns:
         participantes = (
             participantes
             .sort("CNPJ_EMIT", nulls_last=True)
-            .unique(subset=dedup_cols or ["COD_PART"], keep="first")
+            .unique(subset=["COD_PART"], keep="first")
         )
     else:
-        participantes = participantes.unique(subset=dedup_cols or ["COD_PART"], keep="first")
+        participantes = participantes.unique(subset=["COD_PART"], keep="first")
 
     return _cast_id_to_str(participantes)
 
@@ -305,6 +342,15 @@ def extrair_c190_fiscal(
     if df_fiscal.is_empty() or versao is None:
         return pl.DataFrame()
 
+    # Forward-fill IND_OPER from parent C100 to C190 rows
+    ff_cols = [c for c in [cd.IND_OPER] if c in df_fiscal.columns]
+    if ff_cols:
+        periodo_col = dfn.PERIODO if dfn.PERIODO in df_fiscal.columns else "Periodo"
+        df_fiscal = df_fiscal.sort(dfn.ID_SPED).with_columns([
+            pl.col(c).forward_fill().over(periodo_col).alias(c)
+            for c in ff_cols
+        ])
+
     raw = df_fiscal.filter(pl.col(dfn.REGISTRO) == "C190")
     if raw.is_empty():
         return pl.DataFrame()
@@ -317,6 +363,7 @@ def extrair_c190_fiscal(
     desired = [
         dfn.PERIODO, dfn.CNPJ,
         dfn.ID_SPED, dfn.ID_PAI,
+        cd.IND_OPER,
         "CST_ICMS", "CFOP", "ALIQ_ICMS", "VL_OPR",
         "VL_BC_ICMS", "VL_ICMS", "VL_BC_ICMS_ST", "VL_ICMS_ST",
         "VL_RED_BC", "VL_IPI",

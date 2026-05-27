@@ -51,29 +51,16 @@ def extrair_a170_contribuicoes(
     versao: str | None,
 ) -> pl.DataFrame:
     """
-    Extrai registros A170 (itens NF de serviço ISS) do EFD Contribuições,
-    enriquecidos com campos do A100 pai via forward-fill.
+    Extrai registros A170 (itens NF de serviço ISS) do EFD Contribuições.
 
-    Colunas retornadas:
-      ID_SPED, ID_PAI, NUM_ITEM, COD_ITEM, DESCR_SERV, VL_ITEM,
-      CST_PIS, CST_COFINS, ALIQ_PIS, ALIQ_COFINS, VL_BC_PIS, VL_BC_COFINS,
-      VL_PIS, VL_COFINS, NATBC_CRED, IND_ORIG_CRED,
-      COD_PART, COD_SIT, NUM_DOC, DT_DOC (forward-filled do A100)
+    rename_columns já propaga toda a hierarquia (A001 -> A100 -> A170), incluindo
+    campos do documento pai (VL_BC_PIS, VL_DOC, etc.) e campos de item com sufixo
+    '2' (VL_BC_PIS2, VL_PIS2, etc.) para distinguir os dois níveis.
     """
     if df_contribuicoes.is_empty() or versao is None:
         return pl.DataFrame()
 
-    ff_cols = [c for c in [cd.COD_PART, cd.COD_SIT, "NUM_DOC", "DT_DOC"] if c in df_contribuicoes.columns]
-    if ff_cols:
-        periodo_col = dfn.PERIODO if dfn.PERIODO in df_contribuicoes.columns else "Periodo"
-        df_enriched = df_contribuicoes.sort(dfn.ID_SPED).with_columns([
-            pl.col(c).forward_fill().over(periodo_col).alias(c)
-            for c in ff_cols
-        ])
-    else:
-        df_enriched = df_contribuicoes
-
-    raw = df_enriched.filter(pl.col(dfn.REGISTRO) == "A170")
+    raw = df_contribuicoes.filter(pl.col(dfn.REGISTRO) == "A170")
     if raw.is_empty():
         return pl.DataFrame()
 
@@ -83,19 +70,26 @@ def extrair_a170_contribuicoes(
         renamed = raw
 
     desired = [
-        dfn.PERIODO, dfn.CNPJ,
-        dfn.ID_SPED, dfn.ID_PAI,
-        "NUM_ITEM", "COD_ITEM", "DESCR_SERV",
-        "VL_ITEM",
-        "CST_PIS", "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
-        "CST_COFINS", "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
-        "NATBC_CRED", "IND_ORIG_CRED",
-        cd.COD_PART, cd.COD_SIT, "NUM_DOC", "DT_DOC",
+        "Período", "Registro", "Quebra CNPJ", "ID-SPED", "ID-PAI", "ID-REG",
+        "REG", "IND_MOV", "REG2", "CNPJ", "REG3",
+        "IND_OPER", "IND_EMIT", cd.COD_PART,
+        cd.COD_SIT, "SER", "SUB", "NUM_DOC", "CHV_NFSE",
+        "DT_DOC", "DT_EXE_SERV", "VL_DOC", "IND_PGTO", "VL_DESC",
+        "VL_BC_PIS", "VL_PIS", "VL_BC_COFINS", "VL_COFINS",
+        "VL_PIS_RET", "VL_COFINS_RET", "VL_ISS",
+        "REG4", "NUM_ITEM", "COD_ITEM", "DESCR_COMPL", "VL_ITEM", "VL_DESC2",
+        "NAT_BC_CRED", "IND_ORIG_CRED",
+        "CST_PIS", "VL_BC_PIS2", "ALIQ_PIS", "VL_PIS2",
+        "CST_COFINS", "VL_BC_COFINS2", "ALIQ_COFINS", "VL_COFINS2",
+        "COD_CTA", "COD_CCUS",
     ]
     result = _safe_select(renamed, desired)
     result = _to_float(result, [
-        "VL_ITEM",
-        "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
-        "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
+        "VL_DOC", "VL_DESC",
+        "VL_BC_PIS", "VL_PIS", "VL_BC_COFINS", "VL_COFINS",
+        "VL_PIS_RET", "VL_COFINS_RET", "VL_ISS",
+        "VL_ITEM", "VL_DESC2",
+        "VL_BC_PIS2", "ALIQ_PIS", "VL_PIS2",
+        "VL_BC_COFINS2", "ALIQ_COFINS", "VL_COFINS2",
     ])
     return _cast_id_to_str(result)

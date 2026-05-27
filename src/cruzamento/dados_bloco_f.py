@@ -12,6 +12,7 @@ Registros extraídos:
 
 import polars as pl
 import datatricks.sped.sped_definitions as dfn
+import cruzamento.cruzamento_definition as cd
 from cruzamento.dados_receita import rename_columns
 from cruzamento.dados_oportunidades import _safe_select, _to_float, _cast_id_to_str
 
@@ -24,11 +25,6 @@ def extrair_f100_contribuicoes(
     """
     Extrai F100 (receitas/despesas diversas) do EFD Contribuições.
     Exclusivo do EFD_C — sem correspondente no EFD ICMS/IPI.
-
-    Colunas retornadas:
-      ID_SPED, IND_OPER, COD_PART, DT_OPER, VL_OPER,
-      CST_PIS, CST_COFINS, VL_BC_PIS, VL_BC_COFINS,
-      ALIQ_PIS, ALIQ_COFINS, VL_PIS, VL_COFINS, DESCR_DOC_OPER
     """
     if df_contribuicoes.is_empty() or versao is None:
         return pl.DataFrame()
@@ -43,12 +39,14 @@ def extrair_f100_contribuicoes(
         renamed = raw
 
     desired = [
-        dfn.PERIODO, dfn.CNPJ,
-        dfn.ID_SPED, dfn.ID_PAI,
-        "IND_OPER", "COD_PART", "DT_OPER", "VL_OPER",
+        "Período", "Registro", "Quebra CNPJ", "ID-SPED", "ID-PAI", "ID-REG",
+        "REG", "IND_MOV", "REG2", "CNPJ", "REG3",
+        "IND_OPER", cd.COD_PART,
+        "COD_ITEM", "DT_OPER", "VL_OPER",
         "CST_PIS", "VL_BC_PIS", "ALIQ_PIS", "VL_PIS",
         "CST_COFINS", "VL_BC_COFINS", "ALIQ_COFINS", "VL_COFINS",
-        "DESCR_DOC_OPER",
+        "NAT_BC_CRED", "IND_ORIG_CRED",
+        "COD_CTA", "COD_CCUS", "DESC_DOC_OPER",
     ]
     result = _safe_select(renamed, desired)
     result = _to_float(result, [

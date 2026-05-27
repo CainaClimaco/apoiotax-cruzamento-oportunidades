@@ -60,12 +60,12 @@ def extrair_d190_fiscal(
 
     Colunas retornadas:
       ID_SPED, ID_PAI, CFOP, CST_ICMS, ALIQ_ICMS, VL_BC_ICMS, VL_ICMS,
-      COD_PART, COD_SIT, CHV_CTE, DT_DOC (forward-filled do D100)
+      COD_PART, COD_SIT, CHV_CTE, DT_DOC, VL_DOC (forward-filled do D100)
     """
     if df_fiscal.is_empty() or versao is None:
         return pl.DataFrame()
 
-    ff_cols = [c for c in [cd.COD_PART, cd.COD_SIT, "CHV_CTE", "DT_DOC"] if c in df_fiscal.columns]
+    ff_cols = [c for c in [cd.COD_PART, cd.COD_SIT, "CHV_CTE", "DT_DOC", "VL_DOC", "COD_CTA"] if c in df_fiscal.columns]
     if ff_cols:
         periodo_col = dfn.PERIODO if dfn.PERIODO in df_fiscal.columns else "Periodo"
         df_enriched = df_fiscal.sort(dfn.ID_SPED).with_columns([
@@ -88,10 +88,10 @@ def extrair_d190_fiscal(
         dfn.PERIODO, dfn.CNPJ,
         dfn.ID_SPED, dfn.ID_PAI,
         "CFOP", "CST_ICMS", "ALIQ_ICMS", "VL_BC_ICMS", "VL_ICMS",
-        cd.COD_PART, cd.COD_SIT, "CHV_CTE", "DT_DOC",
+        cd.COD_PART, cd.COD_SIT, "CHV_CTE", "DT_DOC", "VL_DOC", "COD_CTA",
     ]
     result = _safe_select(renamed, desired)
-    result = _to_float(result, ["ALIQ_ICMS", "VL_BC_ICMS", "VL_ICMS"])
+    result = _to_float(result, ["ALIQ_ICMS", "VL_BC_ICMS", "VL_ICMS", "VL_DOC"])
     return _cast_id_to_str(result)
 
 

@@ -11,6 +11,8 @@ write_excel.excel_oportunidades().
 import time
 import datatricks.sped.conversor_sped as cv
 import datatricks.sped.sped_definitions as dfn
+import datatricks.io.file_definitions as fd
+import cruzamento.analise as an
 import cruzamento.cruzamento_definition as cd
 import cruzamento.cruzamento_oportunidades as co
 import cruzamento.empresa as em
@@ -114,7 +116,49 @@ def process_oportunidades(inbound, df_contribuicoes, df_fiscal, self, projeto, p
         df_contribuicoes, df_assets_c, versao_c,
     )
 
-    sizes = {k: len(v) for k, v in oportunidades_data.items() if not v.is_empty()}
+    import polars as pl
+
+    # ── Relatório de arquivos recebidos ──────────────────────────────
+    processados = (
+        inbound
+        .filter(
+            pl.col("file_Name").str.ends_with(".txt")
+            & (pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF))
+        )
+        .select([
+            pl.col("file_Name").alias(cd.file_name),
+            pl.lit("Processado").alias(cd.processamento),
+            pl.when(pl.col(fd.IS_EFDF))
+              .then(pl.lit("EFD Fiscal (ICMS/IPI)"))
+              .when(pl.col(fd.IS_EFDC))
+              .then(pl.lit("EFD Contribuições"))
+              .otherwise(pl.lit(""))
+              .alias(cd.status),
+        ])
+    )
+    txt_fora = an.filtrar_fora_do_padrao(
+        inbound, ".txt",
+        pl.col(fd.IS_EFDC) | pl.col(fd.IS_EFDF),
+        cd.status_txt,
+    )
+    arquivos_info = pl.concat([processados, txt_fora], how="diagonal").sort(cd.file_name)
+    self.logger.info(
+        f"[OPORTUNIDADES] Arquivos recebidos: {arquivos_info.height} | "
+        f"Nao processados: {txt_fora.height}"
+    )
+
+    sizes = {
+        k: (len(v) if isinstance(v, pl.DataFrame) else sum(len(d) for d in v.values()))
+        for k, v in oportunidades_data.items()
+        if not k.startswith("_")   # ignora chaves de metadado (ex: _CFOPS)
+        and (
+            (isinstance(v, pl.DataFrame) and not v.is_empty())
+            or (isinstance(v, dict) and any(
+                isinstance(d, pl.DataFrame) and not d.is_empty()
+                for d in v.values()
+            ))
+        )
+    }
     self.logger.info(f"[OPORTUNIDADES] Registros extraidos: {sizes}")
 
     resumo_info = _build_resumo_info(
@@ -123,6 +167,7 @@ def process_oportunidades(inbound, df_contribuicoes, df_fiscal, self, projeto, p
     )
 
     we.excel_oportunidades(self, empresa, oportunidades_data, projeto, resumo_info)
+    we.excel_arquivos_recebidos(self, empresa, arquivos_info, projeto)
 
     elapsed = round(time.perf_counter() - t0, 1)
     self.logger.info(f"[OPORTUNIDADES] Concluido em {elapsed}s.")
